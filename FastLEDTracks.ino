@@ -1,22 +1,22 @@
 /* Time-Track system for FastLED Addressable LED lighting rigs, by Layne Thomas 1-21-2022-11:03
  *  This program can store an execute a millisecond-accurate lighting event system.
- *  
- *  See TracksLead and TracksFollow 
+ *
+ *  See TracksLead and TracksFollow
  *  To create a spectrum analysis for use in creating the events:
  *  Use ffmpeg with a size of (song length * 10). ex 205 seconds * 10 = 2050x512 as below.
  *   ex. ffmpeg -i "game.m4a" -lavfi showspectrumpic=s=2050x512:color=4:scale=lin:stop=8000 gameLd.png
- *   
+ *
  *  LEAD : 1 for LEAD, 0 for follow
  *  DEBUG : Enabling this will print debug information
- *    
+ *
  *  Design Criteria:
  *   Tasteful : Use complex colors, avoid 'rgb rainbow land'
  *   Smooth : Fading color transitions over palette rotations
  *   Fade-To interpolated timing so endings match startings
- *   
+ *
  *  Software criteria:
- *   
- *  
+ *
+ *
  *  Hardware criteria:
  *   Minimal : The device must optimize memory usage.
  *   Cheap : The device must be low cost and easy to produce.
@@ -28,7 +28,7 @@
  *   Recoverable : The device should be able to recover from mistimings.
  *   Lead-Follow : The follow device will synchronize to the lead device.
  *   Audioreactive : The device must represent the music.
- *   
+ *
  *  Standards:
  *   Arduino Nano : Standard microcontroller kit
  *   WS2811 : Addressable LED wire : Standard 3-wire connectors
@@ -38,18 +38,26 @@
  *   or 18650 Battery Shield case using 5-V output
  *   Thingiverse Case & plans
  *   ffmpeg for Spectrum Analysis
- *   
+ *
  *  Tradeoffs:
  *   Audio track setup does not have to be easy or quick.
  *   Different arduinos can be used.
  *   Different forms of power/battery can be used.
- *   
- *   
+ *
+ * Ideas:
+ *  https://learn.sparkfun.com/tutorials/prototype-wearable-led-dance-harness/all
+ *  https://learn.sparkfun.com/tutorials/motion-controlled-wearable-led-dance-harness
+ *  https://learn.sparkfun.com/tutorials/hackers-in-residence---sound-and-motion-reactivity-for-wearables
+ *
+ * Radio: 
+ *  NRF24L01 https://www.instructables.com/Arduino-and-NRF24L01/
+ *  RTF433 https://www.instructables.com/RF-315433-MHz-Transmitter-receiver-Module-and-Ardu/
+
 */
 
 #define LEAD 1       // Set 1 for Dance lead, 0 for Dance follow
 int timeDelay = -200;//Bootup time less for later
-#define DEBUG 1
+#define DEBUG 0
 
 #include <FastLED.h>
 #define LED_PIN     5
@@ -165,28 +173,42 @@ struct Fx { unsigned long timecode; FxEvent event;   };
 //Leads track
 Fx TracksLead[] = 
 {
-  //Basic setup, fade in to blue
+//Basic setup, fade in to blue
   {1,fx_palette_black},
   {1,fx_speed_0},  
   {1,fx_speed_pos},
-  {1,fx_transition_timed},
-  {1,fx_palette_blue},
 
-  //Introduction
+//First snapin
   {9633,fx_transition_fast},
-  {9633,fx_palette_red},
-  
-  {12033,fx_palette_blue},
-  {14366,fx_palette_red},
-  {16833,fx_palette_blue},
+  {9633,fx_palette_lead},
+  {9633,fx_transition_timed},
+  {9633,fx_palette_black},
+//Second snapint  
+  {12033,fx_transition_fast},
+  {12033,fx_palette_follow},
+  {12033,fx_transition_timed},
+  {12033,fx_palette_black},
+//Third snapin  
+  {14366,fx_transition_fast},
+  {14366,fx_palette_lead},
+  {14366,fx_transition_timed},
+  {14366,fx_palette_black},
+//Fourth snapin
+  {16833,fx_transition_fast},
+  {16833,fx_palette_follow},
+  {16833,fx_transition_timed},
+  {16833,fx_palette_black},
 
-  //First build-up
+//March together
+  {19166,fx_transition_fast},
   {19166,fx_palette_rb},
-  {19166,fx_speed_1},  
+  {19166,fx_transition_timed},
+  {19166,fx_palette_wrb},
+  //{19166,fx_speed_1},  
 
   //Coast
   {24100,fx_transition_timed},
-  {24100,fx_palette_blue},
+  {24100,fx_palette_lead},
   {26366,fx_transition_fast},
   {26366,fx_palette_white},    
   {26900,fx_palette_wb},
@@ -196,7 +218,7 @@ Fx TracksLead[] =
 
   //Coast2
   {33633,fx_transition_timed},
-  {33633,fx_palette_blue},
+  {33633,fx_palette_cyan},
   {35966,fx_transition_fast},    
   {35966,fx_palette_white},    
   {36466,fx_palette_wb},
@@ -237,7 +259,7 @@ Fx TracksFollow[] =
   {1,fx_speed_0},  
   {1,fx_speed_pos},
   {1,fx_transition_timed},
-  {1,fx_palette_blue},
+  {1,fx_palette_back},
 
   //Introduction
   {9633,fx_transition_fast},
@@ -364,6 +386,16 @@ void FxEventSay(int state)
 }
 #endif
 
+#define DARK    0x00,0x00,0x00
+#define WHITE   0xFF,0xFF,0xFF
+#define RED     0xFF,0x00,0x00
+#define YELLOW  0xFF,0xFF,0x00
+#define GREEN   0x00,0x00,0x00
+#define CYAN    0x00,0xFF,0xFF
+#define BLUE    0x00,0x00,0xFF
+#define MAGENTA 0xFF,0x00,0xFF
+#define ORANGE  0xFF,0x7F,0x00
+
 void FxEventTransition()
 {
   initialPalette = currentPalette;
@@ -390,65 +422,66 @@ void FxEventProcess(int state)
     case fx_transition_fast:fastTransition = true;break;
     case fx_transition_timed:fastTransition = false;break;
 
-    case fx_palette_lead:CreateSingleBand(0,0,255);break;
-    case fx_palette_follow:CreateSingleBand(255,0,0);break;    
+  //  case fx_palette_lead:CreateSingleBand(0,192,255);break;
+//    case fx_palette_follow:CreateSingleBand(255,63,0);break;    
+    case fx_palette_lead:CreateSingleBand(BLUE);break;
+    case fx_palette_follow:CreateSingleBand(RED);break;    
    
-    case fx_palette_black:CreateSingleBand(0,0,0);break;
-    case fx_palette_white:CreateSingleBand(255,255,255);break;
-    case fx_palette_red:CreateSingleBand(255,0,0);break;
-    case fx_palette_yellow:CreateSingleBand(255,255,0);break;
-    case fx_palette_green:CreateSingleBand(0,255,0);break;
-    case fx_palette_cyan:CreateSingleBand(0,255,255);break;
-    case fx_palette_blue:CreateSingleBand(0,0,255);break;
-    case fx_palette_magenta:CreateSingleBand(255,0,255);break;
-    case fx_palette_orange:CreateSingleBand(255,127,0);break;
-        
-    case fx_palette_dw: CreateDoubleBand(0,0,0, 255, 255, 255); break;
-    case fx_palette_dr: CreateDoubleBand(0,0,0, 255, 0, 0); break;
-    case fx_palette_dy: CreateDoubleBand(0,0,0, 255, 255, 0); break;
-    case fx_palette_dg: CreateDoubleBand(0,0,0, 0, 255, 0); break;
-    case fx_palette_dc: CreateDoubleBand(0,0,0, 0, 255, 255); break;
-    case fx_palette_db: CreateDoubleBand(0,0,0, 0, 0, 255); break;
-    case fx_palette_dm: CreateDoubleBand(0,0,0, 255, 0, 255); break;
-    case fx_palette_wr: CreateDoubleBand(255,255,255, 255, 0, 0); break;
-    case fx_palette_wy: CreateDoubleBand(255,255,255, 255, 255, 0); break;
-    case fx_palette_wg: CreateDoubleBand(255,255,255, 0, 255, 0); break;
-    case fx_palette_wc: CreateDoubleBand(255,255,255, 0, 255, 255); break;
-    case fx_palette_wb: CreateDoubleBand(255,255,255, 0, 0, 255); break;
-    case fx_palette_wm: CreateDoubleBand(255,255,255, 255, 0, 255); break;
-    case fx_palette_ry: CreateDoubleBand(255,0, 0, 255, 255, 0); break;
-    case fx_palette_rg: CreateDoubleBand(255,0, 0, 0, 255, 0); break;
-    case fx_palette_rc: CreateDoubleBand(255,0, 0, 0, 255, 255); break;
-    case fx_palette_rb: CreateDoubleBand(255,0, 0, 0, 0, 255); break;
-    case fx_palette_rm: CreateDoubleBand(255,0, 0, 255, 0, 255); break;
-    case fx_palette_yg: CreateDoubleBand(255,255, 0, 0, 255, 0); break;
-    case fx_palette_yc: CreateDoubleBand(255,255, 0, 0, 255, 255); break;
-    case fx_palette_yb: CreateDoubleBand(255,255, 0, 0, 0, 255); break;
-    case fx_palette_ym: CreateDoubleBand(255,255, 0, 255,0, 255); break;
-    case fx_palette_gc: CreateDoubleBand(0,255,0, 0, 255, 255); break;
-    case fx_palette_gb: CreateDoubleBand(0,255,0, 0, 0, 255); break;
-    case fx_palette_gm: CreateDoubleBand(0,255,0, 255, 0, 255); break;
-    case fx_palette_cb: CreateDoubleBand(0,255,255, 0, 0, 255); break;
-    case fx_palette_cm: CreateDoubleBand(0,255,255, 255, 0, 255); break;
-    case fx_palette_bm: CreateDoubleBand(255,0,255, 0, 0, 255); break;
+    case fx_palette_black:CreateSingleBand(DARK);break;
+    case fx_palette_white:CreateSingleBand(WHITE);break;
+    case fx_palette_red:CreateSingleBand(RED);break;
+    case fx_palette_yellow:CreateSingleBand(YELLOW);break;
+    case fx_palette_green:CreateSingleBand(GREEN);break;
+    case fx_palette_cyan:CreateSingleBand(CYAN);break;
+    case fx_palette_blue:CreateSingleBand(BLUE);break;
+    case fx_palette_magenta:CreateSingleBand(MAGENTA);break;
+    case fx_palette_orange:CreateSingleBand(ORANGE);break;
+    
+    case fx_palette_dr: CreateDoubleBand(DARK, RED); break;
+    case fx_palette_dy: CreateDoubleBand(DARK, YELLOW); break;
+    case fx_palette_dg: CreateDoubleBand(DARK, GREEN); break;
+    case fx_palette_dc: CreateDoubleBand(DARK, CYAN); break;
+    case fx_palette_db: CreateDoubleBand(DARK, BLUE); break;
+    case fx_palette_dm: CreateDoubleBand(DARK, MAGENTA); break;
+    case fx_palette_wr: CreateDoubleBand(WHITE, RED); break;
+    case fx_palette_wy: CreateDoubleBand(WHITE, YELLOW); break;
+    case fx_palette_wg: CreateDoubleBand(WHITE, GREEN); break;
+    case fx_palette_wc: CreateDoubleBand(WHITE, CYAN); break;
+    case fx_palette_wb: CreateDoubleBand(WHITE, BLUE); break;
+    case fx_palette_wm: CreateDoubleBand(WHITE, MAGENTA); break;
+    case fx_palette_ry: CreateDoubleBand(RED, YELLOW); break;
+    case fx_palette_rg: CreateDoubleBand(RED, GREEN); break;
+    case fx_palette_rc: CreateDoubleBand(RED, CYAN); break;
+    case fx_palette_rb: CreateDoubleBand(RED, BLUE); break;
+    case fx_palette_rm: CreateDoubleBand(RED, MAGENTA); break;
+    case fx_palette_yg: CreateDoubleBand(YELLOW, GREEN); break;
+    case fx_palette_yc: CreateDoubleBand(YELLOW, CYAN); break;
+    case fx_palette_yb: CreateDoubleBand(YELLOW, BLUE); break;
+    case fx_palette_ym: CreateDoubleBand(YELLOW, MAGENTA); break;
+    case fx_palette_gc: CreateDoubleBand(GREEN, CYAN); break;
+    case fx_palette_gb: CreateDoubleBand(GREEN, BLUE); break;
+    case fx_palette_gm: CreateDoubleBand(GREEN, MAGENTA); break;
+    case fx_palette_cb: CreateDoubleBand(CYAN, BLUE); break;
+    case fx_palette_cm: CreateDoubleBand(CYAN, MAGENTA); break;
+    case fx_palette_bm: CreateDoubleBand(BLUE, MAGENTA); break;
 
-    case fx_palette_wry: CreateTripleBand(255,255,255, 255,0, 0, 255, 255, 0); break;
-    case fx_palette_wrg: CreateTripleBand(255,255,255,255,0, 0, 0, 255, 0); break;
-    case fx_palette_wrc: CreateTripleBand(255,255,255,255,0, 0, 0, 255, 255); break;
-    case fx_palette_wrb: CreateTripleBand(255,255,255,255,0, 0, 0, 0, 255); break;
-    case fx_palette_wrm: CreateTripleBand(255,255,255,255,0, 0, 255, 0, 255); break;
-    case fx_palette_wyg: CreateTripleBand(255,255,255,255,255, 0, 0, 255, 0); break;
-    case fx_palette_wyc: CreateTripleBand(255,255,255,255,255, 0, 0, 255, 255); break;
-    case fx_palette_wyb: CreateTripleBand(255,255,255,255,255, 0, 0, 0, 255); break;
-    case fx_palette_wym: CreateTripleBand(255,255,255,255,255, 0, 255,0, 255); break;
-    case fx_palette_wgc: CreateTripleBand(255,255,255,0,255,0, 0, 255, 255); break;
-    case fx_palette_wgb: CreateTripleBand(255,255,255,0,255,0, 0, 0, 255); break;
-    case fx_palette_wgm: CreateTripleBand(255,255,255,0,255,0, 255, 0, 255); break;
-    case fx_palette_wcb: CreateTripleBand(255,255,255,0,255,255, 0, 0, 255); break;
-    case fx_palette_wcm: CreateTripleBand(255,255,255,0,255,255, 255, 0, 255); break;
-    case fx_palette_wbm: CreateTripleBand(255,255,255,255,0,255, 0, 0, 255); break;
+    case fx_palette_wry: CreateTripleBand(WHITE, RED, YELLOW); break;
+    case fx_palette_wrg: CreateTripleBand(WHITE, RED, GREEN); break;
+    case fx_palette_wrc: CreateTripleBand(WHITE, RED, CYAN); break;
+    case fx_palette_wrb: CreateTripleBand(WHITE, RED, BLUE); break;
+    case fx_palette_wrm: CreateTripleBand(WHITE, RED, MAGENTA); break;
+    case fx_palette_wyg: CreateTripleBand(WHITE, YELLOW, GREEN); break;
+    case fx_palette_wyc: CreateTripleBand(WHITE, YELLOW, CYAN); break;
+    case fx_palette_wyb: CreateTripleBand(WHITE, YELLOW, BLUE); break;
+    case fx_palette_wym: CreateTripleBand(WHITE, YELLOW, MAGENTA); break;
+    case fx_palette_wgc: CreateTripleBand(WHITE, GREEN, CYAN); break;
+    case fx_palette_wgb: CreateTripleBand(WHITE, GREEN, BLUE); break;
+    case fx_palette_wgm: CreateTripleBand(WHITE, GREEN, MAGENTA); break;
+    case fx_palette_wcb: CreateTripleBand(WHITE, CYAN, BLUE); break;
+    case fx_palette_wcm: CreateTripleBand(WHITE, CYAN, MAGENTA); break;
+    case fx_palette_wbm: CreateTripleBand(WHITE, BLUE, MAGENTA); break;
 
-    case fx_palette_rgb:CreateTripleBand(255,0,0, 0,255,0, 0,0,255);break;
+    case fx_palette_rgb:CreateTripleBand(RED, GREEN, BLUE);break;
   }
 }
 
