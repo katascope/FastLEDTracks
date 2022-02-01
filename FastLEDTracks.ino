@@ -70,7 +70,7 @@
 //////////////// FastLED Section ////////////////
 #include <FastLED.h>
 #define LED_PIN     3
-#define NUM_LEDS    310
+#define NUM_LEDS    320
 #define BRIGHTNESS  64
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
@@ -86,7 +86,6 @@ float transitionMux = 0;
 unsigned long timeOffset = 0;
 unsigned long lastMatchedTimecode = 0;
 //////////////// FastLED Section ////////////////
-
 
 //////////////// BlueTooth Section ////////////////
 #if BLUETOOTH_ENABLE
@@ -262,14 +261,12 @@ const PROGMEM Fx SongTrack[] =
 #endif
 const PROGMEM int numSongTracks = sizeof(SongTrack)/(sizeof(unsigned long)*2);
 
-static unsigned long SongTrack_timecode(int i)
-{
-  return pgm_read_dword(&(SongTrack[i*2+0]));
-}
-static unsigned long SongTrack_event(int i)
-{
-  return pgm_read_dword(&(SongTrack[i*2+1]));
-}
+//Compacted utility functions
+static unsigned long SongTrack_timecode(int i) { return pgm_read_dword(&(SongTrack[i*2+0])); } 
+static unsigned long SongTrack_event(int i) {  return pgm_read_dword(&(SongTrack[i*2+1])); }
+static uint8_t lerp(float mux, uint8_t a, uint8_t b) { return (uint8_t)(a * (1.0 - mux) + b * mux); }
+static CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) { return CRGB(lerp(t, r1, r2),lerp(t, g1, g2),lerp(t, b1, b2)); }
+static unsigned long GetTime() { return millis() - timeOffset; }
 
 #if DEBUG_ENABLE
 String FxEventName(int event)
@@ -438,7 +435,7 @@ void FxEventProcess(int state)
     case fx_palette_wcm: CreateTripleBand(WHITE, CYAN, MAGENTA); break;
     case fx_palette_wbm: CreateTripleBand(WHITE, BLUE, MAGENTA); break;
 
-    case fx_palette_rgb:CreateTripleBand(RED, GREEN, BLUE);break;
+    case fx_palette_rgb: CreateTripleBand(RED, GREEN, BLUE);break;
   }
 }
 
@@ -458,23 +455,6 @@ void trackSetup()
 #endif
 }
 
-unsigned long GetTime()
-{
-  return millis() - timeOffset;
-}
-
-
-void DumpTracks()
-{
-  for (int i=0;i<numSongTracks;i++)
-  {
-      Serial.print("Track ");
-      Serial.print(SongTrack_timecode(i));
-      Serial.print(" Event:");
-      Serial.println(SongTrack_event(i));
-  }      
-}
-
 void setup() {
   Serial.begin(9600); //serial communication at 9600 bauds
   delay( 3000 ); // power-up safety delay  
@@ -482,15 +462,11 @@ void setup() {
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(  BRIGHTNESS );
 
-  Serial.print("Progmem check ");
-  Serial.println(SongTrack_timecode(4));
-
-  DumpTracks();
 /*
   trackSetup();
   timeOffset = 0;
   timeDelay = GetTime() + timeDelay;  
-  Serial.print("TimeDelay = ");
+  Serial.print(F("TimeDelay = "));
   Serial.println(timeDelay);
   */
 
@@ -538,7 +514,7 @@ int GetCurrentTimeCodeMatch(unsigned long timecode)
 }
 
 #if DEBUG_ENABLE
-String FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigned long nextMatchedTimecode)
+void FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigned long nextMatchedTimecode)
 {
     float tc = (float)matchedTimecode / (float)1000.0f;
     Serial.print(tc);
@@ -554,7 +530,7 @@ String FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigne
 
     Serial.print(F(", next"));
 /*    
-    Serial.print(" = ");
+    Serial.print(F(" = "));
     for (int i=0;i<numSongTracks;i++)
       if (activeSongTracks[i].timecode == nextMatchedTimecode)
           FxEventSay(activeSongTracks[i].state);        
@@ -564,13 +540,14 @@ String FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigne
     Serial.print(timeUntil);
     Serial.print(F("s"));
     Serial.println();
-    
-    return "";
 }
 #endif
 
 void FxEventPoll(unsigned long timecode)
 {
+  if (!playing)
+    return;
+ 
   int match = GetCurrentTimeCodeMatch(timecode);
   int nextmatch = GetNextTimeCodeMatch(match);  
   unsigned long matchedTimecode = SongTrack_timecode(match);
@@ -598,10 +575,19 @@ void FxEventPoll(unsigned long timecode)
 
   unsigned long totalSpan = nextMatchedTimecode - lastMatchedTimecode;  
   transitionMux = ((float)timecode - (float)lastMatchedTimecode ) / (float)totalSpan;
-}
 
-uint8_t lerp(float mux, uint8_t a, uint8_t b) { return (uint8_t)(a * (1.0 - mux) + b * mux); }
-CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) { return CRGB(lerp(t, r1, r2),lerp(t, g1, g2),lerp(t, b1, b2)); }
+  if (timedTransition)
+  {
+    //Interpolate initial palette to next palette, based on transition (0 to 1)
+    for (int i=0;i<16;i++)
+    {
+      CRGB rgb = LerpRGB(transitionMux,
+        initialPalette[i][0],initialPalette[i][1],initialPalette[i][2],
+        nextPalette[i][0],nextPalette[i][1],nextPalette[i][2]);
+      currentPalette[i] = rgb;
+    } 
+  }
+}
 
 void FillLEDsFromPaletteColors( uint8_t colorIndex)
 {
@@ -636,14 +622,6 @@ void CreateQuadBand(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, 
 
 void processInput(int data)
 {
-#if BLUETOOTH_ENABLE
-  if (data != 10 && data != 13 && data != 225)
-  {
-    bluetooth.print(F("="));
-    bluetooth.println(data);
-  }
-#endif
-        
     switch (data)
     {
       case 0: break;
@@ -669,7 +647,6 @@ void processInput(int data)
 #if BLUETOOTH_ENABLE
         bluetooth.println(F("Begin Track"));
 #endif        
-
 #if DEBUG
         Serial.println(F("Begin Track"));
 #endif        
@@ -680,7 +657,9 @@ void processInput(int data)
 #if BLUETOOTH_ENABLE
         bluetooth.println(F("Stop Track"));
 #endif        
+#if DEBUG
         Serial.println(F("Stop Track"));
+#endif        
         playing = false;
         break;
       case 10:break;
@@ -688,13 +667,25 @@ void processInput(int data)
       case 225:break;
       default:
 #if BLUETOOTH_ENABLE
-          bluetooth.print(F("unk:"));
-          bluetooth.println(data);
+        bluetooth.print(F("unk:"));
+        bluetooth.println(data);
 #endif          
-          break;
+#if DEBUG
+        Serial.print(F("unk:"));
+        Serial.println(data);
+#endif        
+        break;
     }  
     delay(50);
 }
+
+void DrawTestPattern() {  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
+                                 CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0),
+                                 CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
+                                 CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0));
+}
+
+static void ProcessSerialInput() { if (Serial.available()) { int data = Serial.read(); Serial.print((char)data); processInput(data); } }
 
 void loop()
 {
@@ -713,44 +704,16 @@ void loop()
     Serial.println(data);*/
   }  
 #endif
-
- /*if (Serial.available()) {
-    int data = Serial.read();
-    Serial.print((char)data);
-    processInput(data);
- }*/
+  ProcessSerialInput();
 
 #if TEST_PATTERN_ENABLE
-  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
-                                 CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0),
-                                 CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
-                                 CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0));
-  static uint8_t startIndex = 0;  
-  FillLEDsFromPaletteColors( startIndex);
-  startIndex = startIndex + 1; /* motion speed */
-  FastLED.show();
-  FastLED.delay(1000 / UPDATES_PER_SECOND);
-#else  
+  DrawTestPattern();
+#else
+  FxEventPoll(GetTime());    
+#endif  
 
-  if (playing)
-  {
-    FxEventPoll(GetTime());    
-    if (timedTransition)
-    {
-      //Interpolate initial palette to next palette, based on transition (0 to 1)
-      for (int i=0;i<16;i++)
-      {
-        CRGB rgb = LerpRGB(transitionMux,
-          initialPalette[i][0],initialPalette[i][1],initialPalette[i][2],
-          nextPalette[i][0],nextPalette[i][1],nextPalette[i][2]);
-        currentPalette[i] = rgb;
-      } 
-    }
-  }
-  
   static uint8_t startIndex = startIndex + (paletteSpeed);
   FillLEDsFromPaletteColors( startIndex);
   FastLED.show();
   FastLED.delay(1000 / UPDATES_PER_SECOND);
-#endif  
 }
