@@ -9,6 +9,8 @@
  *  Simple : The device must be extremely easy to use once setup.
  *  Reliable : The software must work correctly during the dance.
  *  Minimal : The device must strenously optimize RAM usage.
+ *   PROGMEM for Track - Can expand without using RAM
+ *   See: https://www.arduino.cc/reference/en/language/variables/utilities/progmem/
  *  Configurable : The code must be highly configurable by #DEFINE.
  *  Recoverable : The device should be able to recover from mistimings.
  *  Cheap : The device must be low cost and easy to produce.
@@ -24,6 +26,10 @@
  *    or 18650 Battery Shield case using 5-V output
  *   Thingiverse Case & plans
  *   ffmpeg for Spectrum Analysis
+ *   HC-05 Bluetooth https://www.evelta.com/blog/instructions-to-set-bluetooth-module-hc05-password-using-arduino/
+ *    AT+NAME?
+ *    AT+NAME="LedLight"
+ *    AT+PSWD="3838"
  * Tradeoffs:
  *   Audio track setup does not have to be easy or quick.
  *   Different arduinos can be used.
@@ -47,26 +53,24 @@
  * JY-MCU Bluetooth module communication example for Arduino.
  *  Connect RX_PIN to TX pin of the module,
  *  Connect TX_PIN to RX pin of the module.
+ * Set Bluetooth HC-05
  */
+#include <avr/pgmspace.h> 
+
 #define LEAD                 1     // Set 1 for Dance lead, 0 for Dance follow
 
-//These must be carefully used as they can each eat up remaining memory
 #define PLAY_AT_STARTUP      0     // Play right at startup?
 #define BLUETOOTH_ENABLE     1     // Uses about 200 bytes
+#define DEBUG_ENABLE         0     // Debug verbose mode
 #define TEST_PATTERN_ENABLE  0     // Test pattern mode
 #define HEARTBEAT_OUTPUT     0     // Output device heartbeat 
-#define DEBUG_ENABLE         0     // Debug mode
 
 #define TRACK_START_DELAY    1800  // Delay time from start until track should truly 'start'
 
 //////////////// FastLED Section ////////////////
 #include <FastLED.h>
 #define LED_PIN     3
-#if DEBUG_ENABLE
-#define NUM_LEDS    10
-#else
-#define NUM_LEDS    320 //Need to get this up to 320 or use less dense led strips
-#endif
+#define NUM_LEDS    310
 #define BRIGHTNESS  64
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
@@ -87,9 +91,9 @@ unsigned long lastMatchedTimecode = 0;
 //////////////// BlueTooth Section ////////////////
 #if BLUETOOTH_ENABLE
  #include <SoftwareSerial.h>
- const int RX_PIN = 5;
- const int TX_PIN = 6;
- const int BLUETOOTH_BAUD_RATE = 9600;
+ const PROGMEM int RX_PIN = 5;
+ const PROGMEM int TX_PIN = 6;
+ const PROGMEM int BLUETOOTH_BAUD_RATE = 9600;
  SoftwareSerial bluetooth(RX_PIN, TX_PIN);
 #endif
 //////////////// BlueTooth Section ////////////////
@@ -170,168 +174,177 @@ enum FxEvent
 
   fx_palette_rgb = 230
 };
-struct Fx { unsigned long timecode; FxEvent event;   };
+struct Fx { unsigned long timecode; unsigned long event;   };
 
 // Main Track set to 'The Game Has Changed'
 #if LEAD
-const Fx SongTrack[] = 
+const unsigned long SongTrack[] PROGMEM = 
 {
 //Basic setup, fade in to blue
-  {1,fx_palette_dark},
-  {1,fx_speed_1},  
-  {1,fx_speed_pos},
+  1,fx_palette_dark,
+  1,fx_speed_1,  
+  1,fx_speed_pos,
 
 //First snapin
-  {9633,fx_transition_fast},
-  {9633,fx_palette_lead},
-  {9633,fx_transition_timed},
-  {9633,fx_palette_dark},
+  9633,fx_transition_fast,
+  9633,fx_palette_lead,
+  9633,fx_transition_timed,
+  9633,fx_palette_dark,
 //Second snapint  
-  {12033,fx_transition_fast},
-  {12033,fx_palette_follow},
-  {12033,fx_transition_timed},
-  {12033,fx_palette_dark},
+  12033,fx_transition_fast,
+  12033,fx_palette_follow,
+  12033,fx_transition_timed,
+  12033,fx_palette_dark,
 //Third snapin  
-  {14366,fx_transition_fast},
-  {14366,fx_palette_lead},
-  {14366,fx_transition_timed},
-  {14366,fx_palette_dark},
+  14366,fx_transition_fast,
+  14366,fx_palette_lead,
+  14366,fx_transition_timed,
+  14366,fx_palette_dark,
 //Fourth snapin
-  {16833,fx_transition_fast},
-  {16833,fx_palette_follow},
-  {16833,fx_transition_timed},
-  {16833,fx_palette_dark},
+  16833,fx_transition_fast,
+  16833,fx_palette_follow,
+  16833,fx_transition_timed,
+  16833,fx_palette_dark,
 
 //March together
-  {19166,fx_transition_fast},
-  {19166,fx_palette_rb},
-  {19166,fx_transition_timed},
-  {19166,fx_palette_wrb},
-  //{19166,fx_speed_1},  
+  19166,fx_transition_fast,
+  19166,fx_palette_rb,
+  19166,fx_transition_timed,
+  19166,fx_palette_wrb,
+  //19166,fx_speed_1,  
 
   //Coast
-  {24100,fx_transition_timed},
-  {24100,fx_palette_lead},
-  {26366,fx_transition_fast},
-  {26366,fx_palette_white},    
-  {26900,fx_palette_wb},
+  24100,fx_transition_timed,
+  24100,fx_palette_lead,
+  26366,fx_transition_fast,
+  26366,fx_palette_white,    
+  26900,fx_palette_wb,
 
   //Build2
-  {28733,fx_palette_rb},
+  28733,fx_palette_rb,
 
   //Coast2
-  {33633,fx_transition_timed},
-  {33633,fx_palette_cyan},
-  {35966,fx_transition_fast},    
-  {35966,fx_palette_white},    
-  {36466,fx_palette_wb},
+  33633,fx_transition_timed,
+  33633,fx_palette_cyan,
+  35966,fx_transition_fast,    
+  35966,fx_palette_white,    
+  36466,fx_palette_wb,
 
   //Build3
-  {38400,fx_palette_rb},
-  {40766,fx_palette_wb},
-  {43166,fx_palette_rb},
-  {45566,fx_palette_wb},
+  38400,fx_palette_rb,
+  40766,fx_palette_wb,
+  43166,fx_palette_rb,
+  45566,fx_palette_wb,
 
   //Breakthrough to the G
-  {48100,fx_transition_timed},
-  {48100,fx_speed_0},  
-  {48100,fx_palette_magenta},
-  {52766,fx_palette_cyan},
-  {59933,fx_palette_yellow},
-  {62366,fx_palette_orange},
+  48100,fx_transition_timed,
+  48100,fx_speed_0,  
+  48100,fx_palette_magenta,
+  52766,fx_palette_cyan,
+  59933,fx_palette_yellow,
+  62366,fx_palette_orange,
   
   //coasting orange 
-  {69566,fx_palette_orange},
-  {69566,fx_speed_1},
-  {69566,fx_transition_fast},
+  69566,fx_palette_orange,
+  69566,fx_speed_1,
+  69566,fx_transition_fast,
 
 //placeholder
-  {80500, fx_palette_dark},
+  80500, fx_palette_dark,
 
   //the end
-  {205000, fx_palette_dark},
+  205000, fx_palette_dark
 };
 #else //Follow
-const Fx SongTrack[] = 
+const PROGMEM Fx SongTrack[] = 
 {
 };
 #endif
-const int numSongTracks = sizeof(SongTrack)/sizeof(Fx);
+const PROGMEM int numSongTracks = sizeof(SongTrack)/(sizeof(unsigned long)*2);
+
+static unsigned long SongTrack_timecode(int i)
+{
+  return pgm_read_dword(&(SongTrack[i*2+0]));
+}
+static unsigned long SongTrack_event(int i)
+{
+  return pgm_read_dword(&(SongTrack[i*2+1]));
+}
 
 #if DEBUG_ENABLE
 String FxEventName(int event)
 {  
   switch(event)
   {
-    case fx_speed_pos: return "pos";break;
-    case fx_speed_neg: return "neg";break;
-    case fx_speed_0: return "x0";break;
-    case fx_speed_1: return "x1";break;
-    case fx_speed_2: return "x2";break;
-    case fx_speed_3: return "x3";break;
-    case fx_speed_4: return "x4";break;
-    case fx_speed_8: return "x8";break;
-    case fx_transition_timed: return "timed";break;
-    case fx_transition_fast: return "fast";break;
-    case fx_palette_lead: return "lead";break;    
-    case fx_palette_follow: return "follow";break;       
+    case fx_speed_pos: return F("pos");break;
+    case fx_speed_neg: return F("neg");break;
+    case fx_speed_0: return F("x0");break;
+    case fx_speed_1: return F("x1");break;
+    case fx_speed_2: return F("x2");break;
+    case fx_speed_3: return F("x3");break;
+    case fx_speed_4: return F("x4");break;
+    case fx_speed_8: return F("x8");break;
+    case fx_transition_timed: return F("timed");break;
+    case fx_transition_fast: return F("fast");break;
+    case fx_palette_lead: return F("lead");break;    
+    case fx_palette_follow: return F("follow");break;       
 
-    case fx_palette_dark: return "dk";break;
-    case fx_palette_white: return "w";break;
-    case fx_palette_red: return "r";break;
-    case fx_palette_yellow: return "y";break;
-    case fx_palette_green: return "g";break;
-    case fx_palette_cyan: return "c";break;
-    case fx_palette_blue: return "b";break;
-    case fx_palette_magenta: return "m";break;
-    case fx_palette_orange: return "o";break;
+    case fx_palette_dark: return F("dk");break;
+    case fx_palette_white: return F("w");break;
+    case fx_palette_red: return F("r");break;
+    case fx_palette_yellow: return F("y");break;
+    case fx_palette_green: return F("g");break;
+    case fx_palette_cyan: return F("c");break;
+    case fx_palette_blue: return F("b");break;
+    case fx_palette_magenta: return F("m");break;
+    case fx_palette_orange: return F("o");break;
    
-    case fx_palette_dw: return "dw";break;
-    case fx_palette_dr: return "dr";break;
-    case fx_palette_dy: return "dy";break;
-    case fx_palette_dg: return "dg";break;
-    case fx_palette_dc: return "dc";break;
-    case fx_palette_db: return "db";break;
-    case fx_palette_dm: return "dm";break;
-    case fx_palette_wr: return "wr";break;
-    case fx_palette_wy: return "wy";break;
-    case fx_palette_wg: return "wg";break;
-    case fx_palette_wc: return "wc";break;
-    case fx_palette_wb: return "wb";break;
-    case fx_palette_wm: return "wm";break;
-    case fx_palette_ry: return "ry";break;
-    case fx_palette_rg: return "rg";break;
-    case fx_palette_rc: return "rc";break;
-    case fx_palette_rb: return "rb";break;
-    case fx_palette_rm: return "rm";break;
-    case fx_palette_yg: return "yg";break;
-    case fx_palette_yc: return "yc";break;
-    case fx_palette_yb: return "yb";break;
-    case fx_palette_ym: return "ym";break;
-    case fx_palette_gc: return "gc";break;
-    case fx_palette_gb: return "gb";break;
-    case fx_palette_gm: return "gm";break;
-    case fx_palette_cb: return "cb";break;
-    case fx_palette_cm: return "cm";break;
-    case fx_palette_bm: return "bm";break;
+    case fx_palette_dw: return F("dw");break;
+    case fx_palette_dr: return F("dr");break;
+    case fx_palette_dy: return F("dy");break;
+    case fx_palette_dg: return F("dg");break;
+    case fx_palette_dc: return F("dc");break;
+    case fx_palette_db: return F("db");break;
+    case fx_palette_dm: return F("dm");break;
+    case fx_palette_wr: return F("wr");break;
+    case fx_palette_wy: return F("wy");break;
+    case fx_palette_wg: return F("wg");break;
+    case fx_palette_wc: return F("wc");break;
+    case fx_palette_wb: return F("wb");break;
+    case fx_palette_wm: return F("wm");break;
+    case fx_palette_ry: return F("ry");break;
+    case fx_palette_rg: return F("rg");break;
+    case fx_palette_rc: return F("rc");break;
+    case fx_palette_rb: return F("rb");break;
+    case fx_palette_rm: return F("rm");break;
+    case fx_palette_yg: return F("yg");break;
+    case fx_palette_yc: return F("yc");break;
+    case fx_palette_yb: return F("yb");break;
+    case fx_palette_ym: return F("ym");break;
+    case fx_palette_gc: return F("gc");break;
+    case fx_palette_gb: return F("gb");break;
+    case fx_palette_gm: return F("gm");break;
+    case fx_palette_cb: return F("cb");break;
+    case fx_palette_cm: return F("cm");break;
+    case fx_palette_bm: return F("bm");break;
 
-    case fx_palette_wry:return "wry";break;
-    case fx_palette_wrg:return "wrg";break;
-    case fx_palette_wrc:return "wrc";break;
-    case fx_palette_wrb:return "wrb";break;
-    case fx_palette_wrm:return "wrm";break;
-    case fx_palette_wyg:return "wyg";break;
-    case fx_palette_wyc:return "wyc";break;
-    case fx_palette_wyb:return "wyb";break;
-    case fx_palette_wym:return "wym";break;
-    case fx_palette_wgc:return "wgc";break;
-    case fx_palette_wgb:return "wgb";break;
-    case fx_palette_wgm:return "wgm";break;
-    case fx_palette_wcb:return "wcb";break;
-    case fx_palette_wcm:return "wcm";break;
-    case fx_palette_wbm:return "wbm";break;
+    case fx_palette_wry:return F("wry");break;
+    case fx_palette_wrg:return F("wrg");break;
+    case fx_palette_wrc:return F("wrc");break;
+    case fx_palette_wrb:return F("wrb");break;
+    case fx_palette_wrm:return F("wrm");break;
+    case fx_palette_wyg:return F("wyg");break;
+    case fx_palette_wyc:return F("wyc");break;
+    case fx_palette_wyb:return F("wyb");break;
+    case fx_palette_wym:return F("wym");break;
+    case fx_palette_wgc:return F("wgc");break;
+    case fx_palette_wgb:return F("wgb");break;
+    case fx_palette_wgm:return F("wgm");break;
+    case fx_palette_wcb:return F("wcb");break;
+    case fx_palette_wcm:return F("wcm");break;
+    case fx_palette_wbm:return F("wbm");break;
 
-    case fx_palette_rgb: return "rgb";break;
+    case fx_palette_rgb: return F("rgb");break;
   }
 }
 #endif
@@ -438,9 +451,9 @@ void trackSetup()
   lastMatchedTimecode = 0;
   timedTransition = false;
   transitionMux = 0;
-  timeOffset = millis() - (signed long)TRACK_START_DELAY;
+  timeOffset = (unsigned long)(millis() - (signed long)TRACK_START_DELAY);
 #if DEBUG_ENABLE
-  Serial.print("Time Offset = ");
+  Serial.print(F("Time Offset = "));
   Serial.println(timeOffset);
 #endif
 }
@@ -450,11 +463,29 @@ unsigned long GetTime()
   return millis() - timeOffset;
 }
 
+
+void DumpTracks()
+{
+  for (int i=0;i<numSongTracks;i++)
+  {
+      Serial.print("Track ");
+      Serial.print(SongTrack_timecode(i));
+      Serial.print(" Event:");
+      Serial.println(SongTrack_event(i));
+  }      
+}
+
 void setup() {
   Serial.begin(9600); //serial communication at 9600 bauds
   delay( 3000 ); // power-up safety delay  
+  Serial.println(F("Startup Ok"));
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(  BRIGHTNESS );
+
+  Serial.print("Progmem check ");
+  Serial.println(SongTrack_timecode(4));
+
+  DumpTracks();
 /*
   trackSetup();
   timeOffset = 0;
@@ -465,17 +496,18 @@ void setup() {
 
 #if BLUETOOTH_ENABLE
    bluetooth.begin(BLUETOOTH_BAUD_RATE);
-   Serial.print("Baud:");
+   Serial.print(F("BT Baud Rate:"));
    Serial.println(BLUETOOTH_BAUD_RATE);
-   bluetooth.println("Ok");   
+   bluetooth.println(F("BT Ok"));
 #endif
 
 #if DEBUG_ENABLE
-  Serial.println(playing ? "Playing" : "Ready");
+  if (playing) Serial.println(F("Playing"));
+  else Serial.println(F("Ready"));
 #endif
 
 #if TEST_PATTERN_ENABLE
-  Serial.println("TestMode");
+  Serial.println(F("TestMode"));
 #endif  
 
 #if PLAY_AT_STARTUP
@@ -485,10 +517,10 @@ void setup() {
 
 int GetNextTimeCodeMatch(int currentMatch)
 {
-  unsigned long currentMatchedTimecode = SongTrack[currentMatch].timecode;
+  unsigned long currentMatchedTimecode = SongTrack_timecode(currentMatch);
   
   for (int i=0;i<numSongTracks;i++)
-    if (SongTrack[i].timecode > currentMatchedTimecode)
+    if (SongTrack_timecode(i) > currentMatchedTimecode)
       return i;
   return 0;
 }
@@ -498,8 +530,10 @@ int GetCurrentTimeCodeMatch(unsigned long timecode)
   int match = 0;
   
   for (int i=0;i<numSongTracks;i++)
-    if (SongTrack[i].timecode <= timecode)
+  {
+    if (SongTrack_timecode(i) <= timecode)
       match = i;  
+  }
   return match;
 }
 
@@ -508,17 +542,17 @@ String FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigne
 {
     float tc = (float)matchedTimecode / (float)1000.0f;
     Serial.print(tc);
-    Serial.print(" :");
+    Serial.print(F(" :"));
     for (int i=0;i<numSongTracks;i++)
     {
-      if (SongTrack[i].timecode == matchedTimecode)
+      if (SongTrack_timecode(i) == matchedTimecode)
       {
-        Serial.print(" ");
-        Serial.print(FxEventName(SongTrack[i].event));
+        Serial.print(F(" "));
+        Serial.print(FxEventName(SongTrack_event(i)));
       }
     }
 
-    Serial.print(", next");
+    Serial.print(F(", next"));
 /*    
     Serial.print(" = ");
     for (int i=0;i<numSongTracks;i++)
@@ -526,9 +560,9 @@ String FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigne
           FxEventSay(activeSongTracks[i].state);        
 */  
     float timeUntil = (float)(nextMatchedTimecode - (float)timecode) / 1000.0f;
-    Serial.print(" in ");
+    Serial.print(F(" in "));
     Serial.print(timeUntil);
-    Serial.print("s");    
+    Serial.print(F("s"));
     Serial.println();
     
     return "";
@@ -539,9 +573,9 @@ void FxEventPoll(unsigned long timecode)
 {
   int match = GetCurrentTimeCodeMatch(timecode);
   int nextmatch = GetNextTimeCodeMatch(match);  
-  unsigned long matchedTimecode = SongTrack[match].timecode;
-  unsigned long nextMatchedTimecode = SongTrack[nextmatch].timecode;
-  
+  unsigned long matchedTimecode = SongTrack_timecode(match);
+  unsigned long nextMatchedTimecode = SongTrack_timecode(nextmatch);
+
   if (matchedTimecode > lastMatchedTimecode)
   {
     timedTransition = false;
@@ -551,14 +585,13 @@ void FxEventPoll(unsigned long timecode)
 #endif    
 #if BLUETOOTH_ENABLE
     bluetooth.print((float)matchedTimecode/(float)1000.0f);
-    //bluetooth.print(" nxt@ ");
-    //bluetooth.print((float)nextMatchedTimecode/(float)1000.0f);
-    bluetooth.println("");
+    bluetooth.print(F(" : next @ "));
+    bluetooth.println((float)nextMatchedTimecode/(float)1000.0f);
 #endif
 
     for (int i=0;i<numSongTracks;i++)
-      if (SongTrack[i].timecode == matchedTimecode)
-        FxEventProcess(SongTrack[i].event);
+      if (SongTrack_timecode(i) == matchedTimecode)
+        FxEventProcess(SongTrack_event(i));
 
     lastMatchedTimecode = timecode;
   }
@@ -603,20 +636,51 @@ void CreateQuadBand(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, 
 
 void processInput(int data)
 {
+#if BLUETOOTH_ENABLE
+  if (data != 10 && data != 13 && data != 225)
+  {
+    bluetooth.print(F("="));
+    bluetooth.println(data);
+  }
+#endif
+        
     switch (data)
     {
       case 0: break;
+      case 'm': 
+#if BLUETOOTH_ENABLE
+        bluetooth.println(F("Menu: b m s"));
+        if (playing) 
+        { 
+          bluetooth.print(F("Playing "));
+          bluetooth.println(lastMatchedTimecode);
+          bluetooth.print(F("TimeOffset "));
+          bluetooth.println(timeOffset);
+        }
+        else bluetooth.println(F("Ready"));
+#endif        
+#if DEBUG
+        Serial.println(F("Menu: b m s"));
+        if (playing) Serial.println(F("Playing"));
+        else Serial.println(F("Ready"));
+#endif        
+        break;
       case 'b': 
 #if BLUETOOTH_ENABLE
-        bluetooth.println("Begin");
+        bluetooth.println(F("Begin Track"));
+#endif        
+
+#if DEBUG
+        Serial.println(F("Begin Track"));
 #endif        
         trackSetup();
         playing = true;
         break;
       case 's': 
 #if BLUETOOTH_ENABLE
-        bluetooth.println("Stop");
+        bluetooth.println(F("Stop Track"));
 #endif        
+        Serial.println(F("Stop Track"));
         playing = false;
         break;
       case 10:break;
@@ -624,22 +688,13 @@ void processInput(int data)
       case 225:break;
       default:
 #if BLUETOOTH_ENABLE
-          bluetooth.print("unk:");
+          bluetooth.print(F("unk:"));
           bluetooth.println(data);
 #endif          
           break;
     }  
+    delay(50);
 }
-
-#if BLUETOOTH_ENABLE
-void pollBluetooth()
-{
-  if (bluetooth.available()) {
-    int data = bluetooth.read();
-    processInput(data);
-  }  
-}
-#endif
 
 void loop()
 {
@@ -648,14 +703,22 @@ void loop()
 #endif
 
 #if BLUETOOTH_ENABLE
-  pollBluetooth();
+  if (bluetooth.available()) {
+    int data = bluetooth.read();
+    if (data != 10 && data != 13 && data != 225)
+      processInput(data);
+/*    bluetooth.print(F("RCV:"));
+    bluetooth.println(data);
+    Serial.print(F("RCV:"));
+    Serial.println(data);*/
+  }  
 #endif
 
- if (Serial.available()) {
+ /*if (Serial.available()) {
     int data = Serial.read();
     Serial.print((char)data);
     processInput(data);
- }
+ }*/
 
 #if TEST_PATTERN_ENABLE
   currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
