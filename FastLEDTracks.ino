@@ -645,6 +645,12 @@ void processInput(int data)
     switch (data)
     {
       case 0: break;
+      case 't':
+        Serial.println(F("Test"));
+#if BLUETOOTH_ENABLE
+        bluetooth.println(F("Test"));
+#endif
+        break;
       case 'm': 
 #if DEBUG_ENABLE
         if (playing) Serial.println(F("b m s : Playing"));
@@ -694,6 +700,8 @@ void processInput(int data)
 #if DEBUG_ENABLE
         Serial.print(F("unk:"));
         Serial.println(data);
+        Serial.print(F("valt:"));
+        Serial.println((int)'t');
 #endif        
         break;
     }  
@@ -707,7 +715,7 @@ void DrawTestPattern() {  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,
 }
 
 static void ProcessSerialInput() { 
-  if (Serial.available()) { int data = Serial.read(); Serial.print((char)data); processInput(data); } 
+  if (Serial.available()) { byte data = Serial.read(); Serial.print((char)data); processInput(data); } 
 }
 
 void loop()
@@ -718,9 +726,13 @@ void loop()
 
 #if BLUETOOTH_ENABLE
   if (bluetooth.available()) {
-    int data = bluetooth.read();
+    byte data = bluetooth.read();
     if (data != 10 && data != 13 && data != 225)
+    {
+      Serial.print(F("RCV:"));
+      Serial.println(data);
       processInput(data);
+    }
 /*    bluetooth.print(F("RCV:"));
     bluetooth.println(data);
     Serial.print(F("RCV:"));
