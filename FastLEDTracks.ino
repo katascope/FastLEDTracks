@@ -66,6 +66,7 @@
 #define TEST_PATTERN_ENABLE  0     // Test pattern mode
 #define HEARTBEAT_OUTPUT     0     // Output device heartbeat 
 
+#define DELAY_ENABLE         1
 #define TRACK_START_DELAY    1800  // Delay time from start until track should truly 'start'
 
 //////////////// FastLED Section ////////////////
@@ -75,18 +76,22 @@
 #define BRIGHTNESS  64
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
-#define UPDATES_PER_SECOND 100
+#define UPDATES_PER_SECOND 500
 CRGB leds[NUM_LEDS];
 CRGBPalette16 currentPalette;
 CRGBPalette16 initialPalette;
 CRGBPalette16 nextPalette;
+static uint8_t lerp(float mux, uint8_t a, uint8_t b) { return (uint8_t)(a * (1.0 - mux) + b * mux); }
+static CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) { return CRGB(lerp(t, r1, r2),lerp(t, g1, g2),lerp(t, b1, b2)); }
+//////////////// FastLED Section ////////////////
+
+
 bool playing = false;
 bool timedTransition = false;
 int paletteSpeed = 1;
 float transitionMux = 0;
 unsigned long timeOffset = 0;
 unsigned long lastMatchedTimecode = 0;
-//////////////// FastLED Section ////////////////
 
 //////////////// BlueTooth Section ////////////////
 #if BLUETOOTH_ENABLE
@@ -277,12 +282,13 @@ const PROGMEM int numSongTracks = sizeof(SongTrack)/(sizeof(unsigned long)*2);
 //Compacted utility functions
 static unsigned long SongTrack_timecode(int i) { return pgm_read_dword(&(SongTrack[i*2+0])); } 
 static unsigned long SongTrack_event(int i) {  return pgm_read_dword(&(SongTrack[i*2+1])); }
-static uint8_t lerp(float mux, uint8_t a, uint8_t b) { return (uint8_t)(a * (1.0 - mux) + b * mux); }
-static CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) { return CRGB(lerp(t, r1, r2),lerp(t, g1, g2),lerp(t, b1, b2)); }
 static unsigned long GetTime() { return millis() - timeOffset; }
 int GetNextTimeCodeMatch(int currentMatch) { unsigned long tc = SongTrack_timecode(currentMatch); for (int i=0;i<numSongTracks;i++) if (SongTrack_timecode(i) > tc) return i; return 0; }
 int GetCurrentTimeCodeMatch(unsigned long timecode) { int match = 0; for (int i=0;i<numSongTracks;i++) { if (SongTrack_timecode(i) <= timecode) match = i; } return match; }
-void FxEventTransition() { initialPalette = currentPalette; timedTransition = true; }
+
+void FxEventTransition() { 
+  initialPalette = currentPalette; timedTransition = true; 
+}
 
 #if DEBUG_ENABLE
 String FxEventName(int event)
@@ -498,11 +504,11 @@ void trackSetup()
 
 void setup() {
   Serial.begin(9600); //serial communication at 9600 bauds
+
   delay( 3000 ); // power-up safety delay  
   Serial.println(F("Startup Ok"));
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(  BRIGHTNESS );
-
 /*
   trackSetup();
   timeOffset = 0;
@@ -603,7 +609,7 @@ void FxEventPoll(unsigned long timecode)
     {
       CRGB rgb = LerpRGB(transitionMux,
         initialPalette[i][0],initialPalette[i][1],initialPalette[i][2],
-        nextPalette[i][0],nextPalette[i][1],nextPalette[i][2]);
+        nextPalette[i][0],nextPalette[i][1],nextPalette[i][2]);        
       currentPalette[i] = rgb;
     } 
   }
@@ -646,9 +652,9 @@ void processInput(int data)
     {
       case 0: break;
       case 't':
-        Serial.println(F("Test"));
+        Serial.println(("Test"));
 #if BLUETOOTH_ENABLE
-        bluetooth.println(F("Test"));
+        bluetooth.println(("Test"));
 #endif
         break;
       case 'm': 
@@ -657,16 +663,8 @@ void processInput(int data)
         else Serial.println(F("b m s : Ready"));
 #endif        
 #if BLUETOOTH_ENABLE
-        if (playing) bluetooth.println(F("b m s : Playing"));
-        else bluetooth.println(F("b m s : Ready"));
-        /*if (playing) 
-        { 
-          bluetooth.print(F("Playing "));
-          bluetooth.println(lastMatchedTimecode);
-          bluetooth.print(F("TimeOffset "));
-          bluetooth.println(timeOffset);
-        }
-        else bluetooth.println(F("Ready"));*/
+        if (playing) bluetooth.println(("b m s : Playing"));
+        else bluetooth.println(("b m s : Ready"));
 #endif        
         break;
       case 'b': 
@@ -674,7 +672,7 @@ void processInput(int data)
         Serial.println(F("Begin Track"));
 #endif        
 #if BLUETOOTH_ENABLE
-        bluetooth.println(F("Begin Track"));
+        bluetooth.println(("Begin Track"));
 #endif        
         if (!playing)
          trackSetup();
@@ -685,7 +683,7 @@ void processInput(int data)
         Serial.println(F("Stop Track"));
 #endif        
 #if BLUETOOTH_ENABLE
-        bluetooth.println(F("Stop Track"));
+        bluetooth.println(("Stop Track"));
 #endif        
         playing = false;
         break;
@@ -708,14 +706,17 @@ void processInput(int data)
  //   delay(50);
 }
 
-void DrawTestPattern() {  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
+void DrawTestPattern() {
+#if LED_ENABLE
+  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
                                  CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0),
                                  CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
                                  CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0));
+#endif                                 
 }
 
 static void ProcessSerialInput() { 
-  if (Serial.available()) { byte data = Serial.read(); Serial.print((char)data); processInput(data); } 
+  while (Serial.available()) { int data = Serial.read(); Serial.print(data); processInput(data); } 
 }
 
 void loop()
@@ -725,8 +726,8 @@ void loop()
 #endif
 
 #if BLUETOOTH_ENABLE
-  if (bluetooth.available()) {
-    byte data = bluetooth.read();
+  while (bluetooth.available()) {
+    char data = bluetooth.read();
     if (data != 10 && data != 13 && data != 225)
     {
       Serial.print(F("RCV:"));
@@ -747,8 +748,10 @@ void loop()
   FxEventPoll(GetTime());    
 #endif  
 
+#if LED_ENABLE
   static uint8_t startIndex = startIndex + (paletteSpeed);
   FillLEDsFromPaletteColors( startIndex);
   FastLED.show();
   FastLED.delay(1000 / UPDATES_PER_SECOND);
+#endif  
 }
