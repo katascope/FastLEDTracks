@@ -30,6 +30,7 @@
  *    AT+NAME?
  *    AT+NAME="LedLight"
  *    AT+PSWD="3838"
+ *   Master+Slave BT bindings: https://www.instructables.com/Arduino-Bluetooth-Master-and-Slave-Using-Any-HC-05/
  * Tradeoffs:
  *   Audio track setup does not have to be easy or quick.
  *   Different arduinos can be used.
@@ -61,7 +62,7 @@
 
 #define PLAY_AT_STARTUP      0     // Play right at startup?
 #define BLUETOOTH_ENABLE     1     // Uses about 200 bytes
-#define DEBUG_ENABLE         0     // Debug verbose mode
+#define DEBUG_ENABLE         1     // Debug verbose mode
 #define TEST_PATTERN_ENABLE  0     // Test pattern mode
 #define HEARTBEAT_OUTPUT     0     // Output device heartbeat 
 
@@ -70,7 +71,7 @@
 //////////////// FastLED Section ////////////////
 #include <FastLED.h>
 #define LED_PIN     3
-#define NUM_LEDS    320
+#define NUM_LEDS    220
 #define BRIGHTNESS  64
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
@@ -92,7 +93,7 @@ unsigned long lastMatchedTimecode = 0;
  #include <SoftwareSerial.h>
  const PROGMEM int RX_PIN = 5;
  const PROGMEM int TX_PIN = 6;
- const PROGMEM int BLUETOOTH_BAUD_RATE = 9600;
+ const PROGMEM unsigned long BLUETOOTH_BAUD_RATE = 38400;
  SoftwareSerial bluetooth(RX_PIN, TX_PIN);
 #endif
 //////////////// BlueTooth Section ////////////////
@@ -100,21 +101,35 @@ unsigned long lastMatchedTimecode = 0;
 //List of possible Fx events
 enum FxEvent
 {
-  fx_speed_0 = 0,
-  fx_speed_1 = 1,
-  fx_speed_2 = 2,
-  fx_speed_3 = 3,
-  fx_speed_4 = 4,
-  fx_speed_8 = 8,
+  fx_speed_0  = 0,
+  fx_speed_1  = 1,
+  fx_speed_2  = 2,
+  fx_speed_3  = 3,
+  fx_speed_4  = 4,
+  fx_speed_5  = 5,
+  fx_speed_6  = 6,
+  fx_speed_7  = 7,
+  fx_speed_8  = 8,
+  fx_speed_9  = 9,
+  fx_speed_10 = 10,
+  fx_speed_11 = 11,
+  fx_speed_12 = 12,
+  fx_speed_13 = 13,
+  fx_speed_14 = 14,
+  fx_speed_15 = 15,
+  fx_speed_16 = 16,
+  fx_speed_17 = 17,
+  fx_speed_18 = 18,
+  fx_speed_19 = 19,
 
-  fx_speed_pos = 10,
-  fx_speed_neg = 11,
+  fx_speed_pos = 20,
+  fx_speed_neg = 21,
 
-  fx_transition_fast = 20,
-  fx_transition_timed = 21,  
+  fx_transition_fast = 30,
+  fx_transition_timed = 31,  
 
-  fx_palette_lead = 30,
-  fx_palette_follow = 31,
+  fx_palette_lead = 40,
+  fx_palette_follow = 41,
 
   fx_palette_dark = 101,
   fx_palette_white = 102,
@@ -255,9 +270,7 @@ const unsigned long SongTrack[] PROGMEM =
   205000, fx_palette_dark
 };
 #else //Follow
-const PROGMEM Fx SongTrack[] = 
-{
-};
+const PROGMEM Fx SongTrack[] = { };
 #endif
 const PROGMEM int numSongTracks = sizeof(SongTrack)/(sizeof(unsigned long)*2);
 
@@ -267,6 +280,9 @@ static unsigned long SongTrack_event(int i) {  return pgm_read_dword(&(SongTrack
 static uint8_t lerp(float mux, uint8_t a, uint8_t b) { return (uint8_t)(a * (1.0 - mux) + b * mux); }
 static CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) { return CRGB(lerp(t, r1, r2),lerp(t, g1, g2),lerp(t, b1, b2)); }
 static unsigned long GetTime() { return millis() - timeOffset; }
+int GetNextTimeCodeMatch(int currentMatch) { unsigned long tc = SongTrack_timecode(currentMatch); for (int i=0;i<numSongTracks;i++) if (SongTrack_timecode(i) > tc) return i; return 0; }
+int GetCurrentTimeCodeMatch(unsigned long timecode) { int match = 0; for (int i=0;i<numSongTracks;i++) { if (SongTrack_timecode(i) <= timecode) match = i; } return match; }
+void FxEventTransition() { initialPalette = currentPalette; timedTransition = true; }
 
 #if DEBUG_ENABLE
 String FxEventName(int event)
@@ -280,7 +296,22 @@ String FxEventName(int event)
     case fx_speed_2: return F("x2");break;
     case fx_speed_3: return F("x3");break;
     case fx_speed_4: return F("x4");break;
+    case fx_speed_5: return F("x5");break;
+    case fx_speed_6: return F("x6");break;
+    case fx_speed_7: return F("x7");break;
     case fx_speed_8: return F("x8");break;
+    case fx_speed_9: return F("x9");break;
+    case fx_speed_10: return F("x10");break;
+    case fx_speed_11: return F("x11");break;
+    case fx_speed_12: return F("x12");break;
+    case fx_speed_13: return F("x13");break;
+    case fx_speed_14: return F("x14");break;
+    case fx_speed_15: return F("x15");break;
+    case fx_speed_16: return F("x16");break;
+    case fx_speed_17: return F("x17");break;
+    case fx_speed_18: return F("x18");break;
+    case fx_speed_19: return F("x19");break;
+    
     case fx_transition_timed: return F("timed");break;
     case fx_transition_fast: return F("fast");break;
     case fx_palette_lead: return F("lead");break;    
@@ -346,12 +377,6 @@ String FxEventName(int event)
 }
 #endif
 
-void FxEventTransition()
-{
-  initialPalette = currentPalette;
-  timedTransition = true;
-}
-
 #define DARK    0x00,0x00,0x00
 #define WHITE   0xFF,0xFF,0xFF
 #define RED     0xFF,0x00,0x00
@@ -365,12 +390,28 @@ void FxEventProcess(int state)
 {
   switch (state)
   {
-    case fx_speed_0:paletteSpeed = 0;break;
-    case fx_speed_1:paletteSpeed = 1;break;
-    case fx_speed_2:paletteSpeed = 2;break;
-    case fx_speed_3:paletteSpeed = 3;break;
-    case fx_speed_4:paletteSpeed = 4;break;
-    case fx_speed_8:paletteSpeed = 8;break;
+    case fx_speed_0:
+    case fx_speed_1:
+    case fx_speed_2:
+    case fx_speed_3:
+    case fx_speed_4:
+    case fx_speed_5:
+    case fx_speed_6:
+    case fx_speed_7:
+    case fx_speed_8:
+    case fx_speed_9:
+    case fx_speed_10:
+    case fx_speed_11:
+    case fx_speed_12:
+    case fx_speed_13:
+    case fx_speed_14:
+    case fx_speed_15:
+    case fx_speed_16:
+    case fx_speed_17:
+    case fx_speed_18:
+    case fx_speed_19:
+      paletteSpeed = state;
+      break;
 
     case fx_speed_pos:paletteSpeed = abs(paletteSpeed);break;
     case fx_speed_neg:paletteSpeed = -abs(paletteSpeed);break;
@@ -491,27 +532,6 @@ void setup() {
 #endif
 }
 
-int GetNextTimeCodeMatch(int currentMatch)
-{
-  unsigned long currentMatchedTimecode = SongTrack_timecode(currentMatch);
-  
-  for (int i=0;i<numSongTracks;i++)
-    if (SongTrack_timecode(i) > currentMatchedTimecode)
-      return i;
-  return 0;
-}
-
-int GetCurrentTimeCodeMatch(unsigned long timecode)
-{
-  int match = 0;
-  
-  for (int i=0;i<numSongTracks;i++)
-  {
-    if (SongTrack_timecode(i) <= timecode)
-      match = i;  
-  }
-  return match;
-}
 
 #if DEBUG_ENABLE
 void FxEventsSay(unsigned long timecode, unsigned long matchedTimecode,unsigned long nextMatchedTimecode)
@@ -626,57 +646,58 @@ void processInput(int data)
     {
       case 0: break;
       case 'm': 
+#if DEBUG_ENABLE
+        if (playing) Serial.println(F("b m s : Playing"));
+        else Serial.println(F("b m s : Ready"));
+#endif        
 #if BLUETOOTH_ENABLE
-        bluetooth.println(F("Menu: b m s"));
-        if (playing) 
+        if (playing) bluetooth.println(F("b m s : Playing"));
+        else bluetooth.println(F("b m s : Ready"));
+        /*if (playing) 
         { 
           bluetooth.print(F("Playing "));
           bluetooth.println(lastMatchedTimecode);
           bluetooth.print(F("TimeOffset "));
           bluetooth.println(timeOffset);
         }
-        else bluetooth.println(F("Ready"));
-#endif        
-#if DEBUG
-        Serial.println(F("Menu: b m s"));
-        if (playing) Serial.println(F("Playing"));
-        else Serial.println(F("Ready"));
+        else bluetooth.println(F("Ready"));*/
 #endif        
         break;
       case 'b': 
+#if DEBUG_ENABLE
+        Serial.println(F("Begin Track"));
+#endif        
 #if BLUETOOTH_ENABLE
         bluetooth.println(F("Begin Track"));
 #endif        
-#if DEBUG
-        Serial.println(F("Begin Track"));
-#endif        
-        trackSetup();
+        if (!playing)
+         trackSetup();
         playing = true;
         break;
       case 's': 
+#if DEBUG_ENABLE
+        Serial.println(F("Stop Track"));
+#endif        
 #if BLUETOOTH_ENABLE
         bluetooth.println(F("Stop Track"));
 #endif        
-#if DEBUG
-        Serial.println(F("Stop Track"));
-#endif        
         playing = false;
         break;
-      case 10:break;
-      case 13:break;
+      case 10:
+      case 13:
       case 225:break;
       default:
 #if BLUETOOTH_ENABLE
         bluetooth.print(F("unk:"));
         bluetooth.println(data);
 #endif          
-#if DEBUG
+#if DEBUG_ENABLE
         Serial.print(F("unk:"));
         Serial.println(data);
 #endif        
         break;
     }  
-    delay(50);
+ //   delay(50);
 }
 
 void DrawTestPattern() {  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
@@ -685,7 +706,9 @@ void DrawTestPattern() {  currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,
                                  CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0));
 }
 
-static void ProcessSerialInput() { if (Serial.available()) { int data = Serial.read(); Serial.print((char)data); processInput(data); } }
+static void ProcessSerialInput() { 
+  if (Serial.available()) { int data = Serial.read(); Serial.print((char)data); processInput(data); } 
+}
 
 void loop()
 {
