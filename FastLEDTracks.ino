@@ -63,10 +63,11 @@
 #define PLAY_AT_STARTUP      0     // Play right at startup?
 #define BLUETOOTH_ENABLE     1     // Uses about 200 bytes
 #define DEBUG_ENABLE         1     // Debug verbose mode
-#define TEST_PATTERN_ENABLE  0     // Test pattern mode
+const bool testMode = false;
+//#define TEST_PATTERN_ENABLE  0     // Test pattern mode
 #define HEARTBEAT_OUTPUT     0     // Output device heartbeat 
 
-#define DELAY_ENABLE         1
+#define DELAY_ENABLE         0
 #define TRACK_START_DELAY    1800  // Delay time from start until track should truly 'start'
 
 //////////////// FastLED Section ////////////////
@@ -529,7 +530,7 @@ void setup() {
   else Serial.println(F("Ready"));
 #endif
 
-#if TEST_PATTERN_ENABLE
+#if testMode
   Serial.println(F("TestMode"));
 #endif  
 
@@ -707,12 +708,10 @@ void processInput(int data)
 }
 
 void DrawTestPattern() {
-#if LED_ENABLE
   currentPalette = CRGBPalette16(CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
                                  CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0),
                                  CRGB(0,0,0),CRGB(255,0,0),CRGB(255,255,0),CRGB(0,255,0),
                                  CRGB(0,255,255),CRGB(0,0,255),CRGB(255,0,255),CRGB(0,0,0));
-#endif                                 
 }
 
 static void ProcessSerialInput() { 
@@ -742,16 +741,17 @@ void loop()
 #endif
   ProcessSerialInput();
 
-#if TEST_PATTERN_ENABLE
-  DrawTestPattern();
-#else
-  FxEventPoll(GetTime());    
-#endif  
+  if (testMode)
+    DrawTestPattern();
+  else
+    FxEventPoll(GetTime());    
 
-#if LED_ENABLE
-  static uint8_t startIndex = startIndex + (paletteSpeed);
-  FillLEDsFromPaletteColors( startIndex);
-  FastLED.show();
-  FastLED.delay(1000 / UPDATES_PER_SECOND);
-#endif  
+
+  if (playing || testMode)
+  {
+    static uint8_t startIndex = startIndex + (paletteSpeed);
+    FillLEDsFromPaletteColors( startIndex);
+    FastLED.show();
+    FastLED.delay(1000 / UPDATES_PER_SECOND);
+  }
 }
