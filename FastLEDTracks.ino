@@ -65,16 +65,15 @@
 #define LEAD                 1     // Set 1 for Dance lead, 0 for Dance follow
 
 #define PLAY_AT_STARTUP      0     // Play right at startup?
-#define BLUETOOTH_ENABLE     1     // Uses about 200 bytes
-#define DEBUG_ENABLE         1     // Debug verbose mode
+#define TEST_MODE            0
+#define BLUETOOTH_ENABLE     `     // Uses about 200 bytes
+#define DEBUG_ENABLE         `     // Debug verbose mode
 #define HEARTBEAT_OUTPUT     0     // Output device heartbeat 
-
-#define DELAY_ENABLE         0
 #define TRACK_START_DELAY    1800  // Delay time from start until track should truly 'start'
 
 //////////////// FastLED Section ////////////////
 #include <FastLED.h>
-#define LED_PIN     3
+#define LED_PIN     3 // 3, 5 for some, should be 3 
 #define NUM_LEDS    310
 #define BRIGHTNESS  64
 #define LED_TYPE    WS2811
@@ -88,14 +87,16 @@ static uint8_t lerp(float mux, uint8_t a, uint8_t b) { return (uint8_t)(a * (1.0
 static CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) { return CRGB(lerp(t, r1, r2),lerp(t, g1, g2),lerp(t, b1, b2)); }
 //////////////// FastLED Section ////////////////
 
+static bool animatePalette = false;
+static bool testMode = true;
 static bool playing = false;
 static bool timedTransition = false;
 static int paletteSpeed = 1;
+static int paletteDirection = 1;
 static float transitionMux = 0;
 static unsigned long timeOffset = 0;
 static unsigned long lastMatchedTimecode = 0;
 static unsigned long lastTimeLed = 0;
-static bool testMode = false;
 
 //////////////// BlueTooth Section ////////////////
 #if BLUETOOTH_ENABLE
@@ -129,7 +130,7 @@ enum FxEvent
   fx_speed_16 = 16,
   fx_speed_17 = 17,
   fx_speed_18 = 18,
-  fx_speed_19 = 19,
+  fx_speed_32 = 19,
 
   fx_speed_pos = 20,
   fx_speed_neg = 21,
@@ -295,6 +296,10 @@ void FxEventTransition() {
   initialPalette = currentPalette; timedTransition = true; 
 }
 
+void SetLeds()
+{
+}
+
 #if DEBUG_ENABLE
 String FxEventName(int event)
 {  
@@ -321,7 +326,7 @@ String FxEventName(int event)
     case fx_speed_16: return F("x16");break;
     case fx_speed_17: return F("x17");break;
     case fx_speed_18: return F("x18");break;
-    case fx_speed_19: return F("x19");break;
+    case fx_speed_32: return F("x32");break;
     
     case fx_transition_timed: return F("timed");break;
     case fx_transition_fast: return F("fast");break;
@@ -420,12 +425,14 @@ void FxEventProcess(int state)
     case fx_speed_16:
     case fx_speed_17:
     case fx_speed_18:
-    case fx_speed_19:
       paletteSpeed = state;
       break;
+    case fx_speed_32:
+      paletteSpeed = 32;
+      break;
 
-    case fx_speed_pos:paletteSpeed = abs(paletteSpeed);break;
-    case fx_speed_neg:paletteSpeed = -abs(paletteSpeed);break;
+    case fx_speed_pos:paletteDirection = 1;break;
+    case fx_speed_neg:paletteDirection = -1;break;
 
     case fx_transition_fast:timedTransition = false;break;
     case fx_transition_timed:timedTransition = true;break;
@@ -534,13 +541,17 @@ void setup() {
   else Serial.println(F("Ready"));
 #endif
 
-#if testMode
-  Serial.println(F("TestMode"));
-#endif  
-
 #if PLAY_AT_STARTUP
+  trackSetup();
   playing = true;
 #endif
+
+#if TEST_MODE
+  Serial.println(F("TestMode"));
+  FxEventProcess(fx_palette_rgb);
+  ForcePalette();
+#endif
+
 }
 
 
@@ -663,7 +674,6 @@ void Print(String str)
 
 void ForcePalette()
 {
-    Print(F("Pal"));    
     FillLEDsFromPaletteColors(0);
     FastLED.show(); 
     
@@ -675,6 +685,17 @@ void processInput(int data)
 {
     switch (data)
     {
+      case '-': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_neg);Print(F("SpeedNeg"));ForcePalette();playing=false;testMode=false;break;
+      case '+': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_pos);Print(F("SpeedPos"));ForcePalette();playing=false;testMode=false;break;
+      case 'q': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_0);Print(F("Speed0"));ForcePalette();playing=false;testMode=false;break;
+      case 'w': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_1);Print(F("Speed2"));ForcePalette();playing=false;testMode=false;break;
+      case 'e': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_2);Print(F("Speed2"));ForcePalette();playing=false;testMode=false;break;
+      case 'r': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_4);Print(F("Speed2"));ForcePalette();playing=false;testMode=false;break;
+      case 't': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_6);Print(F("Speed2"));ForcePalette();playing=false;testMode=false;break;
+      case 'y': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_8);Print(F("Speed4"));ForcePalette();playing=false;testMode=false;break;
+      case 'u': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_16);Print(F("Speed16"));ForcePalette();playing=false;testMode=false;break;
+      case 'i': animatePalette=true;timedTransition = false;FxEventProcess(fx_speed_32);Print(F("Speed32"));ForcePalette();playing=false;testMode=false;break;
+      
       case '0': timedTransition = false;FxEventProcess(fx_palette_dark);Print(F("DARK"));ForcePalette();break;
       case '1': timedTransition = false;FxEventProcess(fx_palette_white);Print(F("WHITE"));ForcePalette();break;
       case '2': timedTransition = false;FxEventProcess(fx_palette_red);Print(F("RED"));ForcePalette();break;
@@ -684,14 +705,23 @@ void processInput(int data)
       case '6': timedTransition = false;FxEventProcess(fx_palette_blue);Print(F("BLUE"));ForcePalette();break;
       case '7': timedTransition = false;FxEventProcess(fx_palette_magenta);Print(F("MAGENTA"));ForcePalette();break;
       case '8': timedTransition = false;FxEventProcess(fx_palette_orange);Print(F("ORANGE"));ForcePalette();break;
-      case 't':
-        Print(F("Test"));
+      case '9': timedTransition = false;FxEventProcess(fx_palette_rgb);Print(F("RGB"));ForcePalette();break;
+
+      case 'z': timedTransition = false;FxEventProcess(fx_palette_wc);Print(F("WG"));ForcePalette();break;
+      case 'x': timedTransition = false;FxEventProcess(fx_palette_rb);Print(F("RB"));ForcePalette();break;
+      case 'c': timedTransition = false;FxEventProcess(fx_palette_gm);Print(F("GM"));ForcePalette();break;
+      case 'v': timedTransition = false;FxEventProcess(fx_palette_wc);Print(F("WCYAN"));ForcePalette();break;
+      case 'b': timedTransition = false;FxEventProcess(fx_palette_wb);Print(F("WBLUE"));ForcePalette();break;
+      case 'n': timedTransition = false;FxEventProcess(fx_palette_wm);Print(F("WMAGENTA"));ForcePalette();break;
+
+      case 'a':
+        Print(F("A-Test"));
         break;
       case 'm': 
         if (playing) Print(F("b m s : Playing"));
         else Print(F("b m s : Ready"));
         break;
-      case 'b': 
+      case 'd': 
         Print(F("Begin Track"));
         trackSetup();
         testMode = 0;
@@ -701,17 +731,19 @@ void processInput(int data)
         Print(F("Stopping Track"));
         playing = false;
         break;
+      case 0:
       case 10:
       case 13:
       case 225:break;
       default:
         Print(F("unk:"));
+        Serial.println(data);
         break; 
     }  
 }
 
 
-
+static uint8_t startIndex=0;
 void loop()
 {
 #if HEARTBEAT_OUTPUT
@@ -723,8 +755,8 @@ void loop()
     char data = bluetooth.read();
     if (data != 10 && data != 13 && data != 225)
     {
-      Serial.print(F("RCV:"));
-      Serial.println(data);
+      //Serial.print(F("RCV:"));
+      //Serial.println(data);
       processInput(data);
     }
   }  
@@ -734,17 +766,20 @@ void loop()
   if (!testMode)
     FxEventPoll(GetTime());    
 
-  if (playing)
+  if (playing||animatePalette)
   {
     unsigned long t =  millis();
     if (t - lastTimeLed > 45)//delay to let bluetooth get data
     {
-      static uint8_t startIndex = startIndex + (paletteSpeed);
+      startIndex = startIndex + (paletteSpeed * paletteDirection);
       FillLEDsFromPaletteColors( startIndex);
       FastLED.show();
-      //FastLED.delay(1000 / UPDATES_PER_SECOND);
+  //FastLED.delay(1000 / UPDATES_PER_SECOND);   
+   // Serial.print(paletteSpeed);
+ //   Serial.println(" Setting led");
       lastTimeLed = t;
     }
     if (testMode) playing = false;
   }
+  
 }
