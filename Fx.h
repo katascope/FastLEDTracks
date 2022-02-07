@@ -84,7 +84,9 @@ enum FxEvent
   fx_speed_dec = 23,
 
   fx_transition_fast = 30,
-  fx_transition_timed = 31,  
+  fx_transition_timed_fade = 31,
+  fx_transition_timed_wipe_pos = 32,
+  fx_transition_timed_wipe_neg = 33,
 
   fx_palette_lead = 40,
   fx_palette_follow = 41,
@@ -210,8 +212,11 @@ static String FxEventName(int event)
     case fx_speed_inc: return F("speed inc");break;
     case fx_speed_dec: return F("speed dec");break;
     
-    case fx_transition_timed:return F("timed");break;
-    case fx_transition_fast: return F("fast");break;
+    case fx_transition_fast: return F("t-fast");break;
+    case fx_transition_timed_fade:return F("t-timed-fade");break;
+    case fx_transition_timed_wipe_pos:return F("t-timed-wipe-pos");break;
+    case fx_transition_timed_wipe_neg:return F("t-timed-wipe-neg");break;
+    
     case fx_palette_lead:    return F("lead");break;    
     case fx_palette_follow:  return F("follow");break;       
 
@@ -304,8 +309,10 @@ static String FxEventName(int event)
 
 enum FxTransitionType
 {
-  Transition_Instant = 0,
-  Transition_Timed   = 1,
+  Transition_Instant      = 0,
+  Transition_TimedFade    = 1,
+  Transition_TimedWipePos = 2,
+  Transition_TimedWipeNeg = 3,
 };
 
 struct FxController
@@ -313,27 +320,37 @@ struct FxController
   CRGBPalette16 currentPalette;
   CRGBPalette16 initialPalette;
   CRGBPalette16 nextPalette;
-  //FxTransitionType transitionType;
-  bool timedTransition = false;
-  int paletteSpeed = 1;
+  FxTransitionType transitionType;
+  int paletteSpeed = 0;
   int paletteDirection = 1;
+  int paletteIndex = 0;
+  bool animatePalette = false;
+  float transitionMux = 0;
 };
 static FxController fxController;
 
-void CreateTimedTransition()
-{ 
-  fxController.initialPalette = fxController.currentPalette; 
-  fxController.timedTransition = true; 
-}
-
 void CreatePalette(CRGBPalette16 palette)
 {
-    if (fxController.timedTransition)
+    if (fxController.transitionType == Transition_Instant)
+    {
+      fxController.currentPalette = palette;    
+    }
+    else if (fxController.transitionType == Transition_TimedFade)
     {
       fxController.nextPalette = palette;
-      CreateTimedTransition();
+      fxController.initialPalette = fxController.currentPalette; 
     }
-    else fxController.currentPalette = palette;
+    else if (fxController.transitionType == Transition_TimedWipePos)
+    {
+      fxController.nextPalette = palette;
+      fxController.initialPalette = fxController.currentPalette; 
+    }
+    else if (fxController.transitionType == Transition_TimedWipeNeg)
+    {
+      fxController.nextPalette = palette;
+      fxController.initialPalette = fxController.currentPalette; 
+    }
+    
 }
 
 void CreatePaletteBands(CRGB b0,CRGB b1,CRGB b2,CRGB b3, CRGB b4,CRGB b5,CRGB b6,CRGB b7, CRGB b8,CRGB b9,CRGB b10,CRGB b11, CRGB b12,CRGB b13,CRGB b14,CRGB b15)
@@ -408,8 +425,10 @@ void FxEventProcess(int event)
       if (fxController.paletteSpeed < 0)
         fxController.paletteSpeed = 0;
       break;
-    case fx_transition_fast:fxController.timedTransition = false;break;
-    case fx_transition_timed:fxController.timedTransition = true;break;
+    case fx_transition_fast:fxController.transitionType = Transition_Instant;break;
+    case fx_transition_timed_fade:fxController.transitionType = Transition_TimedFade;break;
+    case fx_transition_timed_wipe_pos:fxController.transitionType = Transition_TimedWipePos;fxController.paletteIndex = 0;fxController.animatePalette = false;break;
+    case fx_transition_timed_wipe_neg:fxController.transitionType = Transition_TimedWipeNeg;fxController.paletteIndex = 15;fxController.animatePalette = false;break;
 
     case fx_palette_lead:CreateSingleBand(BLUE);break;
     case fx_palette_follow:CreateSingleBand(RED);break;    

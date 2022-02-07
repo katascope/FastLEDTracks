@@ -67,6 +67,7 @@
 #include "Fx.h"
 #include "Track.h"
 static FxState fxState = FxState_Default;
+//static FxState fxState = FxState_PlayingTrack;
 //static FxState fxState = FxState_TestPattern;
 
 //////////////// FastLED Section ////////////////
@@ -87,9 +88,6 @@ const PROGMEM unsigned long BLUETOOTH_BAUD_RATE = 38400;
 SoftwareSerial bluetooth(RX_PIN, TX_PIN);
 //////////////// BlueTooth Section ////////////////
 
-static uint8_t startIndex = 0;
-static bool animatePalette = false;
-static float transitionMux = 0;
 static unsigned long timeOffset = 0;
 static unsigned long lastMatchedTimecode = 0;
 static unsigned long lastTimeLed = 0;
@@ -117,9 +115,9 @@ void trackStart()
   fxController.initialPalette = CRGBPalette16(dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk);
   fxController.paletteSpeed = 0;
   fxController.paletteDirection = 1;
-  fxController.timedTransition = false;
+  fxController.transitionType = Transition_Instant;
   lastMatchedTimecode = 0;
-  transitionMux = 0;
+  fxController.transitionMux = 0;
   timeOffset = (unsigned long)(millis() - (signed long)TRACK_START_DELAY);
 
   Print(F("Playing Track"));
@@ -130,7 +128,7 @@ void trackStart()
 void trackStop()
 {
   fxState = FxState_Default;
-  animatePalette = false;
+  fxController.animatePalette = false;
   Print(F("Stopping Track"));
 }
 
@@ -145,8 +143,9 @@ void FastLED_FillLEDsFromPaletteColors( uint8_t colorIndex)
 
 void FastLED_SetPalette()
 {
-  startIndex = startIndex + (fxController.paletteSpeed * fxController.paletteDirection);
-  FastLED_FillLEDsFromPaletteColors( startIndex);
+  if (fxController.animatePalette)
+    fxController.paletteIndex = fxController.paletteIndex + (fxController.paletteSpeed * fxController.paletteDirection);
+  FastLED_FillLEDsFromPaletteColors(fxController.paletteIndex);
   FastLED.show();
 }
 
@@ -172,7 +171,7 @@ void setup() {
     FxEventProcess(fx_palette_rgb);
     fxController.paletteDirection = 1;
     fxController.paletteSpeed = 3;
-    animatePalette = true;
+    fxController.animatePalette = true;
   }
 }
 
@@ -185,12 +184,17 @@ void FxEventPoll(unsigned long timecode)
 
   if (matchedTimecode > lastMatchedTimecode)
   {
-    fxController.timedTransition = false;
+    if (fxController.transitionType == Transition_TimedWipePos || fxController.transitionType == Transition_TimedWipeNeg)
+    {
+      fxController.currentPalette = fxController.nextPalette;
+    }
+    fxController.transitionType = Transition_Instant;
+    fxController.animatePalette = true;
 
     FxTrackSay(timecode, matchedTimecode, nextMatchedTimecode);
-    Print(String((float)matchedTimecode / (float)1000.0f));
+    /*Print(String((float)matchedTimecode / (float)1000.0f));
     Print(F(" : next @ "));
-    Println(String((float)nextMatchedTimecode / (float)1000.0f));
+    Println(String((float)nextMatchedTimecode / (float)1000.0f));*/
 
     for (int i = 0; i < numSongTracks; i++)
       if (SongTrack_timecode(i) == matchedTimecode)
@@ -200,25 +204,43 @@ void FxEventPoll(unsigned long timecode)
   }
 
   unsigned long totalSpan = nextMatchedTimecode - lastMatchedTimecode;
-  transitionMux = ((float)timecode - (float)lastMatchedTimecode ) / (float)totalSpan;
+  fxController.transitionMux = ((float)timecode - (float)lastMatchedTimecode ) / (float)totalSpan;
 
-  if (fxController.timedTransition)
+  if (fxController.transitionType == Transition_TimedFade)
   {
     //Interpolate initial palette to next palette, based on transition (0 to 1)
     for (int i = 0; i < 16; i++)
     {
-      CRGB rgb = LerpRGB(transitionMux,
+      CRGB rgb = LerpRGB(fxController.transitionMux,
                          fxController.initialPalette[i][0], fxController.initialPalette[i][1], fxController.initialPalette[i][2],
                          fxController.nextPalette[i][0], fxController.nextPalette[i][1], fxController.nextPalette[i][2]);
       fxController.currentPalette[i] = rgb;
     }
+  }  
+  if (fxController.transitionType == Transition_TimedWipePos)
+  {
+    float mux = (1-fxController.transitionMux);
+    int limit = mux * 15;
+    fxController.currentPalette = fxController.initialPalette;
+    for (int i = 15; i >= limit; i--)
+      fxController.currentPalette[i] = CRGB(fxController.nextPalette[i][0], fxController.nextPalette[i][1], fxController.nextPalette[i][2]);        
+    fxController.paletteIndex = mux * NUM_LEDS;
+  }
+  if (fxController.transitionType == Transition_TimedWipeNeg)
+  {
+    float mux = fxController.transitionMux;
+    int limit = mux * 15;
+    fxController.currentPalette = fxController.nextPalette;    
+    for (int i = 15; i >= limit; i--)
+      fxController.currentPalette[i] = CRGB(fxController.initialPalette[i][0], fxController.initialPalette[i][1], fxController.initialPalette[i][2]);    
+    fxController.paletteIndex = mux * NUM_LEDS;
   }
 }
 
 void DirectEvent(int event)
 {
   fxState = FxState_Default;
-  fxController.timedTransition = false;
+  fxController.transitionType = Transition_Instant;
   if (event != fx_nothing)
     Println(FxEventName(event));
   FxEventProcess(event);
@@ -300,16 +322,16 @@ static void processInput(int data)
     case ')': trackStart(); break;
     case '(': trackStop(); break;
 
-    case '0': animatePalette = false; DirectEvent(fx_palette_dark); FastLED_SetPalette(); break;
-    case '1': animatePalette = false; DirectEvent(fx_palette_white); FastLED_SetPalette(); break;
-    case '2': animatePalette = false; DirectEvent(fx_palette_red); FastLED_SetPalette(); break;
-    case '3': animatePalette = false; DirectEvent(fx_palette_yellow); FastLED_SetPalette(); break;
-    case '4': animatePalette = false; DirectEvent(fx_palette_green); FastLED_SetPalette(); break;
-    case '5': animatePalette = false; DirectEvent(fx_palette_cyan); FastLED_SetPalette(); break;
-    case '6': animatePalette = false; DirectEvent(fx_palette_blue); FastLED_SetPalette(); break;
-    case '7': animatePalette = false; DirectEvent(fx_palette_magenta); FastLED_SetPalette(); break;
-    case '8': animatePalette = false; DirectEvent(fx_palette_orange); FastLED_SetPalette(); break;
-    case '9': animatePalette = false; DirectEvent(fx_palette_rgb); FastLED_SetPalette(); break;
+    case '0': fxController.animatePalette = false; DirectEvent(fx_palette_dark); FastLED_SetPalette(); break;
+    case '1': fxController.animatePalette = false; DirectEvent(fx_palette_white); FastLED_SetPalette(); break;
+    case '2': fxController.animatePalette = false; DirectEvent(fx_palette_red); FastLED_SetPalette(); break;
+    case '3': fxController.animatePalette = false; DirectEvent(fx_palette_yellow); FastLED_SetPalette(); break;
+    case '4': fxController.animatePalette = false; DirectEvent(fx_palette_green); FastLED_SetPalette(); break;
+    case '5': fxController.animatePalette = false; DirectEvent(fx_palette_cyan); FastLED_SetPalette(); break;
+    case '6': fxController.animatePalette = false; DirectEvent(fx_palette_blue); FastLED_SetPalette(); break;
+    case '7': fxController.animatePalette = false; DirectEvent(fx_palette_magenta); FastLED_SetPalette(); break;
+    case '8': fxController.animatePalette = false; DirectEvent(fx_palette_orange); FastLED_SetPalette(); break;
+    case '9': fxController.animatePalette = false; DirectEvent(fx_palette_rgb); FastLED_SetPalette(); break;
 
     case 'q': DirectEvent(fx_palette_lava); FastLED_SetPalette(); break;
     case 'w': DirectEvent(fx_palette_cloud); FastLED_SetPalette(); break;
@@ -320,11 +342,11 @@ static void processInput(int data)
     case 'u': DirectEvent(fx_palette_party); FastLED_SetPalette(); break;
     case 'i': DirectEvent(fx_palette_heat); FastLED_SetPalette(); break;
 
-    case '_': animatePalette = true; DirectEvent(fx_speed_neg); break;
-    case '+': animatePalette = true; DirectEvent(fx_speed_pos); break;
-    case '-': animatePalette = true; DirectEvent(fx_speed_dec); break;
-    case '=': animatePalette = true; DirectEvent(fx_speed_inc); break;
-    case '~': animatePalette = true; DirectEvent(fx_speed_0); break;
+    case '_': fxController.animatePalette = true; DirectEvent(fx_speed_neg); break;
+    case '+': fxController.animatePalette = true; DirectEvent(fx_speed_pos); break;
+    case '-': fxController.animatePalette = true; DirectEvent(fx_speed_dec); break;
+    case '=': fxController.animatePalette = true; DirectEvent(fx_speed_inc); break;
+    case '~': fxController.animatePalette = true; DirectEvent(fx_speed_0); break;
     
     case 10:
     case 13:
@@ -350,7 +372,7 @@ void loop()
   if (fxState == FxState_PlayingTrack)
     FxEventPoll(GetTime());
 
-  if (fxState == FxState_PlayingTrack || animatePalette)
+  if (fxState == FxState_PlayingTrack || fxController.animatePalette)
   {
     unsigned long t =  millis();
     if (t - lastTimeLed > 45)//delay to let bluetooth get data
