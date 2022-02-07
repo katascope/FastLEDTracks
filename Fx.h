@@ -19,6 +19,34 @@ static CRGB LerpRGB(float t, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uin
 #define MAGENTA 0xFF,0x00,0xFF
 #define ORANGE  0xFF,0x7F,0x00
 
+#define CRGB_DARK    CRGB(DARK)
+#define CRGB_WHITE   CRGB(WHITE)
+#define CRGB_RED     CRGB(RED)
+#define CRGB_YELLOW  CRGB(YELLOW)
+#define CRGB_GREEN   CRGB(GREEN)
+#define CRGB_CYAN    CRGB(CYAN)
+#define CRGB_BLUE    CRGB(BLUE)
+#define CRGB_MAGENTA CRGB(MAGENTA)
+#define CRGB_ORANGE  CRGB(ORANGE)
+
+static CRGB ShortnameToCRGB(char shortName)
+{  
+  Serial.print(F("Short:"));
+  Serial.println(shortName);
+  switch (shortName)
+  {
+    case 'd': return CRGB_DARK; 
+    case 'w': return CRGB_WHITE; 
+    case 'r': return CRGB_RED; 
+    case 'y': return CRGB_YELLOW; 
+    case 'g': return CRGB_GREEN; 
+    case 'c': return CRGB_CYAN; 
+    case 'b': return CRGB_BLUE; 
+    case 'm': return CRGB_MAGENTA; 
+    case 'o': return CRGB_ORANGE; 
+  }
+}
+
 enum FxState
 {
   FxState_Default       = 0,
@@ -52,6 +80,8 @@ enum FxEvent
 
   fx_speed_pos = 20,
   fx_speed_neg = 21,
+  fx_speed_inc = 22,
+  fx_speed_dec = 23,
 
   fx_transition_fast = 30,
   fx_transition_timed = 31,  
@@ -61,6 +91,15 @@ enum FxEvent
 
   fx_track_begin = 50,
   fx_track_stop = 51,
+
+  fx_palette_lava = 91,
+  fx_palette_cloud = 92,
+  fx_palette_ocean = 93,
+  fx_palette_forest = 94,
+  fx_palette_rainbow = 95,
+  fx_palette_rainbowstripe = 96,
+  fx_palette_party = 97,
+  fx_palette_heat = 98,
 
   fx_palette_dark = 101,
   fx_palette_white = 102,
@@ -117,7 +156,26 @@ enum FxEvent
   fx_palette_wcm = 214,
   fx_palette_wbm = 215,
 
-  fx_palette_rgb = 230
+  fx_palette_dry = 221,
+  fx_palette_drg = 222,
+  fx_palette_drc = 223,
+  fx_palette_drb = 224,
+  fx_palette_drm = 225,
+  fx_palette_dyg = 226,
+  fx_palette_dyc = 227,
+  fx_palette_dyb = 228,
+  fx_palette_dym = 229,
+  fx_palette_dgc = 230,
+  fx_palette_dgb = 231,
+  fx_palette_dgm = 232,
+  fx_palette_dcb = 233,
+  fx_palette_dcm = 234,
+  fx_palette_dbm = 235,
+
+  fx_palette_rgb = 240,
+  fx_palette_cmy = 241,
+
+  fx_nothing = 255
 };
 
 struct Fx { unsigned long timecode; unsigned long event;   };
@@ -126,8 +184,6 @@ static String FxEventName(int event)
 {  
   switch(event)
   {
-    case fx_speed_pos: return F("pos");break;
-    case fx_speed_neg: return F("neg");break;
     case fx_speed_0: return F("x0");break;
     case fx_speed_1: return F("x1");break;
     case fx_speed_2: return F("x2");break;
@@ -148,11 +204,25 @@ static String FxEventName(int event)
     case fx_speed_17: return F("x17");break;
     case fx_speed_18: return F("x18");break;
     case fx_speed_32: return F("x32");break;
+
+    case fx_speed_pos: return F("speed pos");break;
+    case fx_speed_neg: return F("speed neg");break;
+    case fx_speed_inc: return F("speed inc");break;
+    case fx_speed_dec: return F("speed dec");break;
     
     case fx_transition_timed:return F("timed");break;
     case fx_transition_fast: return F("fast");break;
     case fx_palette_lead:    return F("lead");break;    
     case fx_palette_follow:  return F("follow");break;       
+
+    case fx_palette_lava: return F("lava");break;
+    case fx_palette_cloud: return F("cloud");break;
+    case fx_palette_ocean: return F("ocean");break;
+    case fx_palette_forest: return F("forest");break;
+    case fx_palette_rainbow: return F("rainbow");break;
+    case fx_palette_rainbowstripe: return F("rainbowstripe");break;
+    case fx_palette_party: return F("party");break;
+    case fx_palette_heat: return F("heat");break;
 
     case fx_palette_dark:    return F("dark");break;
     case fx_palette_white:   return F("white");break;
@@ -164,34 +234,34 @@ static String FxEventName(int event)
     case fx_palette_magenta: return F("magenta");break;
     case fx_palette_orange:  return F("orange");break;
    
-    case fx_palette_dw: return F("dw");break;
-    case fx_palette_dr: return F("dr");break;
-    case fx_palette_dy: return F("dy");break;
-    case fx_palette_dg: return F("dg");break;
-    case fx_palette_dc: return F("dc");break;
-    case fx_palette_db: return F("db");break;
-    case fx_palette_dm: return F("dm");break;
-    case fx_palette_wr: return F("wr");break;
-    case fx_palette_wy: return F("wy");break;
-    case fx_palette_wg: return F("wg");break;
-    case fx_palette_wc: return F("wc");break;
-    case fx_palette_wb: return F("wb");break;
-    case fx_palette_wm: return F("wm");break;
-    case fx_palette_ry: return F("ry");break;
-    case fx_palette_rg: return F("rg");break;
-    case fx_palette_rc: return F("rc");break;
-    case fx_palette_rb: return F("rb");break;
-    case fx_palette_rm: return F("rm");break;
-    case fx_palette_yg: return F("yg");break;
-    case fx_palette_yc: return F("yc");break;
-    case fx_palette_yb: return F("yb");break;
-    case fx_palette_ym: return F("ym");break;
-    case fx_palette_gc: return F("gc");break;
-    case fx_palette_gb: return F("gb");break;
-    case fx_palette_gm: return F("gm");break;
-    case fx_palette_cb: return F("cb");break;
-    case fx_palette_cm: return F("cm");break;
-    case fx_palette_bm: return F("bm");break;
+    case fx_palette_dw: return F("dark-white");break;
+    case fx_palette_dr: return F("dark-red");break;
+    case fx_palette_dy: return F("dark-yellow");break;
+    case fx_palette_dg: return F("dark-green");break;
+    case fx_palette_dc: return F("dark-cyan");break;
+    case fx_palette_db: return F("dark-blue");break;
+    case fx_palette_dm: return F("dark-magenta");break;
+    case fx_palette_wr: return F("white-red");break;
+    case fx_palette_wy: return F("white-yellow");break;
+    case fx_palette_wg: return F("white-green");break;
+    case fx_palette_wc: return F("white-cyan");break;
+    case fx_palette_wb: return F("white-blue");break;
+    case fx_palette_wm: return F("white-magenta");break;
+    case fx_palette_ry: return F("red-yellow");break;
+    case fx_palette_rg: return F("red-green");break;
+    case fx_palette_rc: return F("red-cyan");break;
+    case fx_palette_rb: return F("red-blue");break;
+    case fx_palette_rm: return F("red-magenta");break;
+    case fx_palette_yg: return F("yellow-green");break;
+    case fx_palette_yc: return F("yellow-cyan");break;
+    case fx_palette_yb: return F("yellow-blue");break;
+    case fx_palette_ym: return F("yellow-magenta");break;
+    case fx_palette_gc: return F("green-cyan");break;
+    case fx_palette_gb: return F("green-blue");break;
+    case fx_palette_gm: return F("green-magenta");break;
+    case fx_palette_cb: return F("cyan-blue");break;
+    case fx_palette_cm: return F("cyan-magenta");break;
+    case fx_palette_bm: return F("blue-magenta");break;
 
     case fx_palette_wry:return F("wry");break;
     case fx_palette_wrg:return F("wrg");break;
@@ -208,16 +278,42 @@ static String FxEventName(int event)
     case fx_palette_wcb:return F("wcb");break;
     case fx_palette_wcm:return F("wcm");break;
     case fx_palette_wbm:return F("wbm");break;
+
+    case fx_palette_dry:return F("dry");break;
+    case fx_palette_drg:return F("drg");break;
+    case fx_palette_drc:return F("drc");break;
+    case fx_palette_drb:return F("drb");break;
+    case fx_palette_drm:return F("drm");break;
+    case fx_palette_dyg:return F("dyg");break;
+    case fx_palette_dyc:return F("dyc");break;
+    case fx_palette_dyb:return F("dyb");break;
+    case fx_palette_dym:return F("dym");break;
+    case fx_palette_dgc:return F("dgc");break;
+    case fx_palette_dgb:return F("dgb");break;
+    case fx_palette_dgm:return F("dgm");break;
+    case fx_palette_dcb:return F("dcb");break;
+    case fx_palette_dcm:return F("dcm");break;
+    case fx_palette_dbm:return F("dbm");break;    
     
-    case fx_palette_rgb:return F("rgb");break;
+    case fx_palette_rgb:return F("dgb");break;
+    case fx_palette_cmy:return F("cmy");break;
+
+    case fx_nothing:return F("nothing");break;
   }
 }
+
+enum FxTransitionType
+{
+  Transition_Instant = 0,
+  Transition_Timed   = 1,
+};
 
 struct FxController
 {
   CRGBPalette16 currentPalette;
   CRGBPalette16 initialPalette;
   CRGBPalette16 nextPalette;
+  //FxTransitionType transitionType;
   bool timedTransition = false;
   int paletteSpeed = 1;
   int paletteDirection = 1;
@@ -230,27 +326,44 @@ void CreateTimedTransition()
   fxController.timedTransition = true; 
 }
 
-void CreateQuadBand(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2, uint8_t r3, uint8_t g3, uint8_t b3, uint8_t r4, uint8_t g4, uint8_t b4)
+void CreatePalette(CRGBPalette16 palette)
 {
     if (fxController.timedTransition)
     {
-      fxController.nextPalette = CRGBPalette16(CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
-                                   CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
-                                   CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
-                                   CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4));
+      fxController.nextPalette = palette;
       CreateTimedTransition();
     }
-    else  
-    {
-      fxController.currentPalette = CRGBPalette16(CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
-                                    CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
-                                    CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
-                                    CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4));
-    }
+    else fxController.currentPalette = palette;
 }
-void CreateTripleBand(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2, uint8_t r3, uint8_t g3, uint8_t b3) { return CreateQuadBand(r1,g1,b1,r2,g2,b2,r3,g3,b3,0,0,0); }
-void CreateDoubleBand(uint8_t r1, uint8_t g1, uint8_t b1,uint8_t r2, uint8_t g2, uint8_t b2) { return CreateQuadBand(r1,g1,b1,r2,g2,b2,r1,g1,b1,r2,g2,b2); }
-void CreateSingleBand(uint8_t r, uint8_t g, uint8_t b) { return CreateQuadBand(r,g,b,r,g,b,r,g,b,r,g,b); }
+
+void CreatePaletteBands(CRGB b0,CRGB b1,CRGB b2,CRGB b3, CRGB b4,CRGB b5,CRGB b6,CRGB b7, CRGB b8,CRGB b9,CRGB b10,CRGB b11, CRGB b12,CRGB b13,CRGB b14,CRGB b15)
+{
+  CreatePalette(CRGBPalette16(b0,b1,b2,b3, b4,b5,b6,b7, b8,b9,b10,b11, b12,b13,b14,b15));
+  /*if (fxController.timedTransition)
+    {
+      fxController.nextPalette = CreatePalette(CRGBPalette16(b0,b1,b2,b3, b4,b5,b6,b7, b8,b9,b10,b11, b12,b13,b14,b15));
+      CreateTimedTransition();
+    }
+    else fxController.currentPalette = CreatePalette(CRGBPalette16(b0,b1,b2,b3, b4,b5,b6,b7, b8,b9,b10,b11, b12,b13,b14,b15));*/
+}
+
+void CreateQuadBand(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2, uint8_t r3, uint8_t g3, uint8_t b3, uint8_t r4, uint8_t g4, uint8_t b4)
+{
+  CreatePaletteBands(CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
+                     CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
+                     CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4),
+                     CRGB(r1,g1,b1),CRGB(r2,g2,b2), CRGB(r3,g3,b3),CRGB(r4,g4,b4));
+}
+void CreateTripleBand(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2, uint8_t r3, uint8_t g3, uint8_t b3)
+{ 
+  CreatePaletteBands(CRGB(r1,g1,b1),CRGB(r2,g2,b2),CRGB(r3,g3,b3),CRGB(r1,g1,b1),
+                     CRGB(r2,g2,b2),CRGB(r3,g3,b3),CRGB(r1,g1,b1),CRGB(r2,g2,b2),
+                     CRGB(r3,g3,b3),CRGB(r1,g1,b1),CRGB(r2,g2,b2),CRGB(r3,g3,b3),
+                     CRGB(r1,g1,b1),CRGB(r2,g2,b2),CRGB(r3,g3,b3),CRGB(r1,g1,b1)
+                     );
+}
+void CreateDoubleBand(uint8_t r1, uint8_t g1, uint8_t b1,uint8_t r2, uint8_t g2, uint8_t b2) { CreateQuadBand(r1,g1,b1,r2,g2,b2,r1,g1,b1,r2,g2,b2); }
+void CreateSingleBand(uint8_t r, uint8_t g, uint8_t b) { CreateQuadBand(r,g,b,r,g,b,r,g,b,r,g,b); }
 
 
 void FxEventProcess(int event)
@@ -285,12 +398,32 @@ void FxEventProcess(int event)
     case fx_speed_pos:fxController.paletteDirection = 1;break;
     case fx_speed_neg:fxController.paletteDirection = -1;break;
 
+    case fx_speed_inc:
+      fxController.paletteSpeed++;
+      if (fxController.paletteSpeed >= 18)
+        fxController.paletteSpeed = 18;
+      break;
+    case fx_speed_dec:
+      fxController.paletteSpeed--;
+      if (fxController.paletteSpeed < 0)
+        fxController.paletteSpeed = 0;
+      break;
     case fx_transition_fast:fxController.timedTransition = false;break;
     case fx_transition_timed:fxController.timedTransition = true;break;
 
     case fx_palette_lead:CreateSingleBand(BLUE);break;
     case fx_palette_follow:CreateSingleBand(RED);break;    
    
+    //case fx_palette_dark:break;//CreateDefaultBand(DARK);break;
+    case fx_palette_lava:CreatePalette(LavaColors_p);break;
+    case fx_palette_cloud:CreatePalette(CloudColors_p);break;
+    case fx_palette_ocean:CreatePalette(OceanColors_p);break;
+    case fx_palette_forest:CreatePalette(ForestColors_p);break;
+    case fx_palette_rainbow:CreatePalette(RainbowColors_p);break;
+    case fx_palette_rainbowstripe:CreatePalette(RainbowStripeColors_p);break;
+    case fx_palette_party:CreatePalette(PartyColors_p);break;
+    case fx_palette_heat:CreatePalette(HeatColors_p);break;
+
     case fx_palette_dark:CreateSingleBand(DARK);break;
     case fx_palette_white:CreateSingleBand(WHITE);break;
     case fx_palette_red:CreateSingleBand(RED);break;
@@ -329,23 +462,40 @@ void FxEventProcess(int event)
     case fx_palette_cm: CreateDoubleBand(CYAN, MAGENTA); break;
     case fx_palette_bm: CreateDoubleBand(BLUE, MAGENTA); break;
 
-    case fx_palette_wry: CreateTripleBand(WHITE, RED, YELLOW); break;
-    case fx_palette_wrg: CreateTripleBand(WHITE, RED, GREEN); break;
-    case fx_palette_wrc: CreateTripleBand(WHITE, RED, CYAN); break;
-    case fx_palette_wrb: CreateTripleBand(WHITE, RED, BLUE); break;
-    case fx_palette_wrm: CreateTripleBand(WHITE, RED, MAGENTA); break;
-    case fx_palette_wyg: CreateTripleBand(WHITE, YELLOW, GREEN); break;
-    case fx_palette_wyc: CreateTripleBand(WHITE, YELLOW, CYAN); break;
-    case fx_palette_wyb: CreateTripleBand(WHITE, YELLOW, BLUE); break;
-    case fx_palette_wym: CreateTripleBand(WHITE, YELLOW, MAGENTA); break;
-    case fx_palette_wgc: CreateTripleBand(WHITE, GREEN, CYAN); break;
-    case fx_palette_wgb: CreateTripleBand(WHITE, GREEN, BLUE); break;
-    case fx_palette_wgm: CreateTripleBand(WHITE, GREEN, MAGENTA); break;
-    case fx_palette_wcb: CreateTripleBand(WHITE, CYAN, BLUE); break;
-    case fx_palette_wcm: CreateTripleBand(WHITE, CYAN, MAGENTA); break;
-    case fx_palette_wbm: CreateTripleBand(WHITE, BLUE, MAGENTA); break;
+    case fx_palette_wry: CreateQuadBand(WHITE, RED,    WHITE, YELLOW); break;
+    case fx_palette_wrg: CreateQuadBand(WHITE, RED,    WHITE, GREEN); break;
+    case fx_palette_wrc: CreateQuadBand(WHITE, RED,    WHITE, CYAN); break;
+    case fx_palette_wrb: CreateQuadBand(WHITE, RED,    WHITE, BLUE); break;
+    case fx_palette_wrm: CreateQuadBand(WHITE, RED,    WHITE, MAGENTA); break;
+    case fx_palette_wyg: CreateQuadBand(WHITE, YELLOW, WHITE, GREEN); break;
+    case fx_palette_wyc: CreateQuadBand(WHITE, YELLOW, WHITE, CYAN); break;
+    case fx_palette_wyb: CreateQuadBand(WHITE, YELLOW, WHITE, BLUE); break;
+    case fx_palette_wym: CreateQuadBand(WHITE, YELLOW, WHITE, MAGENTA); break;
+    case fx_palette_wgc: CreateQuadBand(WHITE, GREEN,  WHITE, CYAN); break;
+    case fx_palette_wgb: CreateQuadBand(WHITE, GREEN,  WHITE, BLUE); break;
+    case fx_palette_wgm: CreateQuadBand(WHITE, GREEN,  WHITE, MAGENTA); break;
+    case fx_palette_wcb: CreateQuadBand(WHITE, CYAN,   WHITE, BLUE); break;
+    case fx_palette_wcm: CreateQuadBand(WHITE, CYAN,   WHITE, MAGENTA); break;
+    case fx_palette_wbm: CreateQuadBand(WHITE, BLUE,   WHITE, MAGENTA); break;
+
+    case fx_palette_dry: CreateQuadBand(DARK, RED,    DARK, YELLOW); break;
+    case fx_palette_drg: CreateQuadBand(DARK, RED,    DARK, GREEN); break;
+    case fx_palette_drc: CreateQuadBand(DARK, RED,    DARK, CYAN); break;
+    case fx_palette_drb: CreateQuadBand(DARK, RED,    DARK, BLUE); break;
+    case fx_palette_drm: CreateQuadBand(DARK, RED,    DARK, MAGENTA); break;
+    case fx_palette_dyg: CreateQuadBand(DARK, YELLOW, DARK, GREEN); break;
+    case fx_palette_dyc: CreateQuadBand(DARK, YELLOW, DARK, CYAN); break;
+    case fx_palette_dyb: CreateQuadBand(DARK, YELLOW, DARK, BLUE); break;
+    case fx_palette_dym: CreateQuadBand(DARK, YELLOW, DARK, MAGENTA); break;
+    case fx_palette_dgc: CreateQuadBand(DARK, GREEN,  DARK, CYAN); break;
+    case fx_palette_dgb: CreateQuadBand(DARK, GREEN,  DARK, BLUE); break;
+    case fx_palette_dgm: CreateQuadBand(DARK, GREEN,  DARK, MAGENTA); break;
+    case fx_palette_dcb: CreateQuadBand(DARK, CYAN,   DARK, BLUE); break;
+    case fx_palette_dcm: CreateQuadBand(DARK, CYAN,   DARK, MAGENTA); break;
+    case fx_palette_dbm: CreateQuadBand(DARK, BLUE,   DARK, MAGENTA); break;
 
     case fx_palette_rgb: CreateTripleBand(RED, GREEN, BLUE);break;
+    case fx_palette_cmy: CreateTripleBand(CYAN, MAGENTA, YELLOW);break;
   }
 }
 

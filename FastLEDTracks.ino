@@ -7,66 +7,67 @@
 //  Fx for LED effects
 //  Track for track system
 /*
- * Design Criteria:
- *  Audioreactive : The device must represent the dance music.
- *  Lead-Follow : The follow device can synchronize with the lead device.
- *  Simple : The device must be extremely easy to use once setup.
- *  Reliable : The software must work correctly during the dance.
- *   Care with overloading bluetooth buffer
- *   Startup 3 seconds for led safety
- *  Minimal : The device must strenously optimize RAM usage.
- *   PROGMEM for Track - Can expand without using RAM
- *   See: https://www.arduino.cc/reference/en/language/variables/utilities/progmem/
- *  Configurable : The code must be highly configurable by #DEFINE.
- *  Recoverable : The device should be able to recover from mistimings.
- *  Cheap : The device must be low cost and easy to produce.
- *  Portable : The device must be human wearable and untethered.
- *  Stable : The device must withstand repeated heavy use dancing.
- *  Subtle : Indirect lighting for led's, hazed frosted fogged.
- *  Compatible : The device must maximize use of standards.
- *   Arduino Nano : Standard microcontroller kit
- *   WS2811 : Addressable LED wire : Standard 3-wire connectors
- *   BTF-Lighting Connectors : Addressable 3-wire LED wire connectors
- *   Also used for power connector into arduino.
- *   XT-60 Battery connector with D-Sun BEC Voltage convert (3-cell 12v down to 5v)
- *    or 18650 Battery Shield case using 5-V output
- *   Thingiverse Case & plans
- *   ffmpeg for Spectrum Analysis
- *   HC-05 Bluetooth https://www.evelta.com/blog/instructions-to-set-bluetooth-module-hc05-password-using-arduino/
- *    AT+NAME?
- *    AT+NAME="LedLight"
- *    AT+PSWD="3838"
- *   Master+Slave BT bindings: https://www.instructables.com/Arduino-Bluetooth-Master-and-Slave-Using-Any-HC-05/
- * Tradeoffs:
- *   Audio track setup does not have to be easy or quick.
- *   Different arduinos can be used.
- *   Different forms of power/battery can be used.
- *   Arduino Micro Pro can be used if possible instead of Arduino Nano
- * Aesthetic Criteria:
- *   Tasteful : Use complex colors, avoid 'rgb rainbow land'
- *   Smooth : Fading color transitions over palette rotations
- *   Fade-To interpolated timing so endings match startings
- * To create a spectrum analysis for use in creating the events:
- *   Use ffmpeg with a size of (song length * 10). ex 205 seconds * 10 = 2050x512 as below.
- *    ex. ffmpeg -i "game.m4a" -lavfi showspectrumpic=s=2050x512:color=4:scale=lin:stop=8000 gameLd.png
- *
- * Ideas:
- *  https://learn.sparkfun.com/tutorials/prototype-wearable-led-dance-harness/all
- *  https://learn.sparkfun.com/tutorials/motion-controlled-wearable-led-dance-harness
- *  https://learn.sparkfun.com/tutorials/hackers-in-residence---sound-and-motion-reactivity-for-wearables
- * Radio: dw
- *  NRF24L01 https://www.instructables.com/Arduino-and-NRF24L01/
- *  RTF433 https://www.instructables.com/RF-315433-MHz-Transmitter-receiver-Module-and-Ardu/
- * JY-MCU Bluetooth module communication example for Arduino.
- *  Connect RX_PIN to TX pin of the module,
- *  Connect TX_PIN to RX pin of the module.
- * Set Bluetooth HC-05
- * 
- * 16k - For a bluetooth-enabled 300-addressableled-driving music-synchronized system
- */
+   Design Criteria:
+    Audioreactive : The device must represent the dance music.
+    Lead-Follow : The follow device can synchronize with the lead device.
+    Simple : The device must be extremely easy to use once setup.
+    Reliable : The software must work correctly during the dance.
+     Care with overloading bluetooth buffer
+     Startup 3 seconds for led safety
+    Minimal : The device must strenously optimize RAM usage.
+     PROGMEM for Track - Can expand without using RAM
+     See: https://www.arduino.cc/reference/en/language/variables/utilities/progmem/
+    Configurable : The code must be highly configurable by #DEFINE.
+    Recoverable : The device should be able to recover from mistimings.
+    Cheap : The device must be low cost and easy to produce.
+    Portable : The device must be human wearable and untethered.
+    Stable : The device must withstand repeated heavy use dancing.
+    Subtle : Indirect lighting for led's, hazed frosted fogged.
+    Compatible : The device must maximize use of standards.
+     Arduino Nano : Standard microcontroller kit
+     WS2811 : Addressable LED wire : Standard 3-wire connectors
+     BTF-Lighting Connectors : Addressable 3-wire LED wire connectors
+     Also used for power connector into arduino.
+     XT-60 Battery connector with D-Sun BEC Voltage convert (3-cell 12v down to 5v)
+      or 18650 Battery Shield case using 5-V output
+     Thingiverse Case & plans
+     ffmpeg for Spectrum Analysis
+     HC-05 Bluetooth https://www.evelta.com/blog/instructions-to-set-bluetooth-module-hc05-password-using-arduino/
+      AT+NAME?
+      AT+NAME="LedLight"
+      AT+PSWD="3838"
+     Master+Slave BT bindings: https://www.instructables.com/Arduino-Bluetooth-Master-and-Slave-Using-Any-HC-05/
+   Tradeoffs:
+     Audio track setup does not have to be easy or quick.
+     Different arduinos can be used.
+     Different forms of power/battery can be used.
+     Arduino Micro Pro can be used if possible instead of Arduino Nano
+   Aesthetic Criteria:
+     Tasteful : Use complex colors, avoid 'rgb rainbow land'
+     Smooth : Fading color transitions over palette rotations
+     Fade-To interpolated timing so endings match startings
+   To create a spectrum analysis for use in creating the events:
+     Use ffmpeg with a size of (song length * 10). ex 205 seconds * 10 = 2050x512 as below.
+      ex. ffmpeg -i "game.m4a" -lavfi showspectrumpic=s=2050x512:color=4:scale=lin:stop=8000 gameLd.png
+
+   Ideas:
+    https://learn.sparkfun.com/tutorials/prototype-wearable-led-dance-harness/all
+    https://learn.sparkfun.com/tutorials/motion-controlled-wearable-led-dance-harness
+    https://learn.sparkfun.com/tutorials/hackers-in-residence---sound-and-motion-reactivity-for-wearables
+   Radio: dw
+    NRF24L01 https://www.instructables.com/Arduino-and-NRF24L01/
+    RTF433 https://www.instructables.com/RF-315433-MHz-Transmitter-receiver-Module-and-Ardu/
+   JY-MCU Bluetooth module communication example for Arduino.
+    Connect RX_PIN to TX pin of the module,
+    Connect TX_PIN to RX pin of the module.
+   Set Bluetooth HC-05
+
+   16k - For a bluetooth-enabled 300-addressableled-driving music-synchronized system
+*/
 #include "Fx.h"
 #include "Track.h"
 static FxState fxState = FxState_Default;
+//static FxState fxState = FxState_TestPattern;
 
 //////////////// FastLED Section ////////////////
 #include <FastLED.h>
@@ -86,13 +87,15 @@ const PROGMEM unsigned long BLUETOOTH_BAUD_RATE = 38400;
 SoftwareSerial bluetooth(RX_PIN, TX_PIN);
 //////////////// BlueTooth Section ////////////////
 
-static uint8_t startIndex=0;
+static uint8_t startIndex = 0;
 static bool animatePalette = false;
 static float transitionMux = 0;
 static unsigned long timeOffset = 0;
 static unsigned long lastMatchedTimecode = 0;
 static unsigned long lastTimeLed = 0;
-static unsigned long GetTime() { return millis() - timeOffset; }
+static unsigned long GetTime() {
+  return millis() - timeOffset;
+}
 
 void Print(String str)
 {
@@ -108,10 +111,10 @@ void Println(String str)
 
 void trackStart()
 {
-  CRGB dk(0,0,0);
+  CRGB dk(0, 0, 0);
   fxState = FxState_PlayingTrack;
-  fxController.currentPalette = CRGBPalette16(dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk);
-  fxController.initialPalette = CRGBPalette16(dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk,dk);
+  fxController.currentPalette = CRGBPalette16(dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk);
+  fxController.initialPalette = CRGBPalette16(dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk);
   fxController.paletteSpeed = 0;
   fxController.paletteDirection = 1;
   fxController.timedTransition = false;
@@ -119,7 +122,7 @@ void trackStart()
   transitionMux = 0;
   timeOffset = (unsigned long)(millis() - (signed long)TRACK_START_DELAY);
 
-  Print(F("Playing Track"));    
+  Print(F("Playing Track"));
   Print(F(", Time Offset = "));
   Println(String(timeOffset));
 }
@@ -133,8 +136,8 @@ void trackStop()
 
 void FastLED_FillLEDsFromPaletteColors( uint8_t colorIndex)
 {
-  uint8_t brightness = 255;    
-  for( int i = 0; i < NUM_LEDS; i++) {
+  uint8_t brightness = 255;
+  for ( int i = 0; i < NUM_LEDS; i++) {
     leds[i] = ColorFromPalette( fxController.currentPalette, colorIndex, brightness, LINEARBLEND);
     colorIndex += 3;
   }
@@ -145,11 +148,11 @@ void FastLED_SetPalette()
   startIndex = startIndex + (fxController.paletteSpeed * fxController.paletteDirection);
   FastLED_FillLEDsFromPaletteColors( startIndex);
   FastLED.show();
-}  
+}
 
 void setup() {
   Serial.begin(9600); //serial communication at 9600 bauds
-  delay( 3000 ); // power-up safety delay  
+  delay( 3000 ); // power-up safety delay
   Serial.println(F("Startup Ok"));
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(  BRIGHTNESS );
@@ -167,6 +170,8 @@ void setup() {
   {
     Println(F("TestMode"));
     FxEventProcess(fx_palette_rgb);
+    fxController.paletteDirection = 1;
+    fxController.paletteSpeed = 3;
     animatePalette = true;
   }
 }
@@ -174,7 +179,7 @@ void setup() {
 void FxEventPoll(unsigned long timecode)
 {
   int match = GetCurrentTimeCodeMatch(timecode);
-  int nextmatch = GetNextTimeCodeMatch(match);  
+  int nextmatch = GetNextTimeCodeMatch(match);
   unsigned long matchedTimecode = SongTrack_timecode(match);
   unsigned long nextMatchedTimecode = SongTrack_timecode(nextmatch);
 
@@ -183,30 +188,30 @@ void FxEventPoll(unsigned long timecode)
     fxController.timedTransition = false;
 
     FxTrackSay(timecode, matchedTimecode, nextMatchedTimecode);
-    Println(String((float)matchedTimecode/(float)1000.0f));
-    Println(F(" : next @ "));
-    Println(String((float)nextMatchedTimecode/(float)1000.0f));
+    Print(String((float)matchedTimecode / (float)1000.0f));
+    Print(F(" : next @ "));
+    Println(String((float)nextMatchedTimecode / (float)1000.0f));
 
-    for (int i=0;i<numSongTracks;i++)
+    for (int i = 0; i < numSongTracks; i++)
       if (SongTrack_timecode(i) == matchedTimecode)
         FxEventProcess(SongTrack_event(i));
 
     lastMatchedTimecode = timecode;
   }
 
-  unsigned long totalSpan = nextMatchedTimecode - lastMatchedTimecode;  
+  unsigned long totalSpan = nextMatchedTimecode - lastMatchedTimecode;
   transitionMux = ((float)timecode - (float)lastMatchedTimecode ) / (float)totalSpan;
 
   if (fxController.timedTransition)
   {
     //Interpolate initial palette to next palette, based on transition (0 to 1)
-    for (int i=0;i<16;i++)
+    for (int i = 0; i < 16; i++)
     {
       CRGB rgb = LerpRGB(transitionMux,
-        fxController.initialPalette[i][0],fxController.initialPalette[i][1],fxController.initialPalette[i][2],
-        fxController.nextPalette[i][0],fxController.nextPalette[i][1],fxController.nextPalette[i][2]);        
+                         fxController.initialPalette[i][0], fxController.initialPalette[i][1], fxController.initialPalette[i][2],
+                         fxController.nextPalette[i][0], fxController.nextPalette[i][1], fxController.nextPalette[i][2]);
       fxController.currentPalette[i] = rgb;
-    } 
+    }
   }
 }
 
@@ -214,92 +219,136 @@ void DirectEvent(int event)
 {
   fxState = FxState_Default;
   fxController.timedTransition = false;
-  Println(FxEventName(event));
+  if (event != fx_nothing)
+    Println(FxEventName(event));
   FxEventProcess(event);
 }
 
-void processInput(int data)
+static void magicColors(int count, char *colors)
 {
+  CRGB palette[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int index = 0;
+  for (int i=0;i<16;i++)
+  {
+    palette[i] = CRGB(ShortnameToCRGB(colors[index]));
+    index++;
+    if (index >= count) index = 0;  
+  }
+  CreatePaletteBands(
+    palette[0],  palette[1],  palette[2],  palette[3], 
+    palette[4],  palette[5],  palette[6],  palette[7], 
+    palette[8],  palette[9],  palette[10], palette[11], 
+    palette[12], palette[13], palette[14], palette[15]);
+  
+  //animatePalette = false; 
+  DirectEvent(fx_nothing);
+  FastLED_SetPalette(); 
+}
+
+static bool captureText = false;
+static char colorDefinitionStack[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static int colorDefinitionCount = 0;
+static void processCapturedText()
+{
+  captureText = false;
+  
+  Print(F("ColorDef("));
+  Print(String(colorDefinitionCount));
+  Print(F(")"));
+  for (int i = 0; i < colorDefinitionCount; i++)
+  {
+    Print(F(" "));
+    Print(String((char)colorDefinitionStack[i]));
+  }
+  Println(F(""));
+  
+  magicColors(colorDefinitionCount, &colorDefinitionStack[0]);
+  colorDefinitionCount = 0;
+}
+
+static void processInput(int data)
+{
+  if (captureText && data != 10 && data != 13)
+  {
+//    Print(F("Capturing="));
+//    Println(String(data));
+    if (colorDefinitionCount < 16)
+    {
+      colorDefinitionStack[colorDefinitionCount] = (char)data;
+      colorDefinitionCount++;
+    }
+    return;
+  }
+
   switch (data)
   {
-    case '?': 
+    case '!':
+      Println(F("Capturing Text"));
+      captureText = true;
+      break;
+    case '?':
       Println(F("? : Help Menu"));
       Println(F("+ : Rotate Pos"));
       Println(F("- : Rotate Neg"));
       Println(F("d : Track Start"));
       Println(F("s : Track Stop"));
       Println(F("0-9 : Color"));
+      Println(F("!code : Color code"));
+      Println(F("(q)lava (w)cloud (e)ocean (r)forest (t)rainbow (y)rainbowstripe (u)party (i)heat"));
       break;
-    
-    case ')':trackStart();break;
-    case '(':trackStop();break;
-    
-    case '-':animatePalette=true;DirectEvent(fx_speed_neg);break;
-    case '+':animatePalette=true;DirectEvent(fx_speed_pos);break;
-    
-    case 'q':animatePalette=true;DirectEvent(fx_speed_0);break;
-    case 'w':animatePalette=true;DirectEvent(fx_speed_1);break;
-    case 'e':animatePalette=true;DirectEvent(fx_speed_2);break;
-    case 'r':animatePalette=true;DirectEvent(fx_speed_4);break;
-    case 't':animatePalette=true;DirectEvent(fx_speed_6);break;
-    case 'y':animatePalette=true;DirectEvent(fx_speed_8);break;
-    case 'u':animatePalette=true;DirectEvent(fx_speed_16);break;
-    case 'i':animatePalette=true;DirectEvent(fx_speed_32);break;
-      
-    case '0':animatePalette=false;DirectEvent(fx_palette_dark);FastLED_SetPalette();break;
-    case '1':animatePalette=false;DirectEvent(fx_palette_white);FastLED_SetPalette();break;
-    case '2':animatePalette=false;DirectEvent(fx_palette_red);FastLED_SetPalette();break;
-    case '3':animatePalette=false;DirectEvent(fx_palette_yellow);FastLED_SetPalette();break;
-    case '4':animatePalette=false;DirectEvent(fx_palette_green);FastLED_SetPalette();break;
-    case '5':animatePalette=false;DirectEvent(fx_palette_cyan);FastLED_SetPalette();break;
-    case '6':animatePalette=false;DirectEvent(fx_palette_blue);FastLED_SetPalette();break;
-    case '7':animatePalette=false;DirectEvent(fx_palette_magenta);FastLED_SetPalette();break;
-    case '8':animatePalette=false;DirectEvent(fx_palette_orange);FastLED_SetPalette();break;
-    case '9':animatePalette=false;DirectEvent(fx_palette_rgb);FastLED_SetPalette();break;
 
-    case 'z':animatePalette=false;DirectEvent(fx_palette_wr);FastLED_SetPalette();break;
-    case 'x':animatePalette=false;DirectEvent(fx_palette_wy);FastLED_SetPalette();break;
-    case 'c':animatePalette=false;DirectEvent(fx_palette_wg);FastLED_SetPalette();break;
-    case 'v':animatePalette=false;DirectEvent(fx_palette_wc);FastLED_SetPalette();break;
-    case 'b':animatePalette=false;DirectEvent(fx_palette_wb);FastLED_SetPalette();break;
-    case 'n':animatePalette=false;DirectEvent(fx_palette_wm);FastLED_SetPalette();break;
+    case ')': trackStart(); break;
+    case '(': trackStop(); break;
 
-    case 'a':animatePalette=false;DirectEvent(fx_palette_ry);FastLED_SetPalette();break;
-    case 's':animatePalette=false;DirectEvent(fx_palette_rg);FastLED_SetPalette();break;
-    case 'd':animatePalette=false;DirectEvent(fx_palette_rc);FastLED_SetPalette();break;
-    case 'f':animatePalette=false;DirectEvent(fx_palette_rb);FastLED_SetPalette();break;
-    case 'g':animatePalette=false;DirectEvent(fx_palette_rm);FastLED_SetPalette();break;
-    case 'h':animatePalette=false;DirectEvent(fx_palette_yg);FastLED_SetPalette();break;
-    case 'j':animatePalette=false;DirectEvent(fx_palette_yc);FastLED_SetPalette();break;
-    case 'k':animatePalette=false;DirectEvent(fx_palette_yb);FastLED_SetPalette();break;
-    case 'A':animatePalette=false;DirectEvent(fx_palette_ym);FastLED_SetPalette();break;
-    case 'S':animatePalette=false;DirectEvent(fx_palette_gc);FastLED_SetPalette();break;
-    case 'D':animatePalette=false;DirectEvent(fx_palette_gb);FastLED_SetPalette();break;
-    case 'F':animatePalette=false;DirectEvent(fx_palette_gm);FastLED_SetPalette();break;
-    case 'G':animatePalette=false;DirectEvent(fx_palette_cb);FastLED_SetPalette();break;
-    case 'H':animatePalette=false;DirectEvent(fx_palette_cm);FastLED_SetPalette();break;
-    case 'J':animatePalette=false;DirectEvent(fx_palette_bm);FastLED_SetPalette();break;
+    case '0': animatePalette = false; DirectEvent(fx_palette_dark); FastLED_SetPalette(); break;
+    case '1': animatePalette = false; DirectEvent(fx_palette_white); FastLED_SetPalette(); break;
+    case '2': animatePalette = false; DirectEvent(fx_palette_red); FastLED_SetPalette(); break;
+    case '3': animatePalette = false; DirectEvent(fx_palette_yellow); FastLED_SetPalette(); break;
+    case '4': animatePalette = false; DirectEvent(fx_palette_green); FastLED_SetPalette(); break;
+    case '5': animatePalette = false; DirectEvent(fx_palette_cyan); FastLED_SetPalette(); break;
+    case '6': animatePalette = false; DirectEvent(fx_palette_blue); FastLED_SetPalette(); break;
+    case '7': animatePalette = false; DirectEvent(fx_palette_magenta); FastLED_SetPalette(); break;
+    case '8': animatePalette = false; DirectEvent(fx_palette_orange); FastLED_SetPalette(); break;
+    case '9': animatePalette = false; DirectEvent(fx_palette_rgb); FastLED_SetPalette(); break;
 
-    case 0:
+    case 'q': DirectEvent(fx_palette_lava); FastLED_SetPalette(); break;
+    case 'w': DirectEvent(fx_palette_cloud); FastLED_SetPalette(); break;
+    case 'e': DirectEvent(fx_palette_ocean); FastLED_SetPalette(); break;
+    case 'r': DirectEvent(fx_palette_forest); FastLED_SetPalette(); break;
+    case 't': DirectEvent(fx_palette_rainbow); FastLED_SetPalette(); break;
+    case 'y': DirectEvent(fx_palette_rainbowstripe); FastLED_SetPalette(); break;
+    case 'u': DirectEvent(fx_palette_party); FastLED_SetPalette(); break;
+    case 'i': DirectEvent(fx_palette_heat); FastLED_SetPalette(); break;
+
+    case '_': animatePalette = true; DirectEvent(fx_speed_neg); break;
+    case '+': animatePalette = true; DirectEvent(fx_speed_pos); break;
+    case '-': animatePalette = true; DirectEvent(fx_speed_dec); break;
+    case '=': animatePalette = true; DirectEvent(fx_speed_inc); break;
+    case '~': animatePalette = true; DirectEvent(fx_speed_0); break;
+    
     case 10:
     case 13:
-    case 225:break;
+      if (captureText)
+        processCapturedText();
+    case 0:
+    case 225: break;
     default:
       Print(F("unk:"));
       Println(String(data));
-      break; 
-  }  
+      break;
+  }
 }
+
 
 void loop()
 {
   while (Serial.available())
-    processInput(Serial.read()); 
+    processInput(Serial.read());
   while (bluetooth.available())
     processInput(bluetooth.read());
 
   if (fxState == FxState_PlayingTrack)
-    FxEventPoll(GetTime());    
+    FxEventPoll(GetTime());
 
   if (fxState == FxState_PlayingTrack || animatePalette)
   {
@@ -309,5 +358,5 @@ void loop()
       FastLED_SetPalette();
       lastTimeLed = t;
     }
-  }  
+  }
 }

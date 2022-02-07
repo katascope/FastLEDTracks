@@ -15,22 +15,22 @@ const unsigned long SongTrack[] PROGMEM =
   1,fx_speed_pos,
 
 //First snapin
-  9633,fx_transition_fast,
+  //9633,fx_transition_fast,
   9633,fx_palette_lead,
   9633,fx_transition_timed,
   9633,fx_palette_dark,
 //Second snapint  
-  12033,fx_transition_fast,
+//  12033,fx_transition_fast,
   12033,fx_palette_follow,
   12033,fx_transition_timed,
   12033,fx_palette_dark,
 //Third snapin  
-  14366,fx_transition_fast,
+  //14366,fx_transition_fast,
   14366,fx_palette_lead,
   14366,fx_transition_timed,
   14366,fx_palette_dark,
 //Fourth snapin
-  16833,fx_transition_fast,
+//  16833,fx_transition_fast,
   16833,fx_palette_follow,
   16833,fx_transition_timed,
   16833,fx_palette_dark,
@@ -39,15 +39,15 @@ const unsigned long SongTrack[] PROGMEM =
   19166,fx_transition_fast,
   19166,fx_palette_rb,
   19166,fx_transition_timed,
-  19166,fx_palette_wrb,
+  19166,fx_palette_drb,
   //19166,fx_speed_1,  
 
   //Coast
   24100,fx_transition_timed,
   24100,fx_palette_lead,
-  26366,fx_transition_fast,
+  //26366,fx_transition_fast,
   26366,fx_palette_white,    
-  26900,fx_palette_wb,
+  26900,fx_palette_db,
 
   //Build2
   28733,fx_palette_rb,
@@ -55,28 +55,33 @@ const unsigned long SongTrack[] PROGMEM =
   //Coast2
   33633,fx_transition_timed,
   33633,fx_palette_cyan,
-  35966,fx_transition_fast,    
+  35966,fx_transition_timed,    
   35966,fx_palette_white,    
-  36466,fx_palette_wb,
+  36466,fx_palette_db,
+  36466,fx_transition_timed,    
 
   //Build3
   38400,fx_palette_rb,
-  40766,fx_palette_wb,
+  40766,fx_palette_db,
   43166,fx_palette_rb,
-  45566,fx_palette_wb,
+  45566,fx_palette_dr,
 
   //Breakthrough to the G
   48100,fx_transition_timed,
   48100,fx_speed_0,  
   48100,fx_palette_magenta,
+  52766,fx_transition_timed,
   52766,fx_palette_cyan,
+  59933,fx_transition_timed,
   59933,fx_palette_yellow,
+  62366,fx_transition_timed,
   62366,fx_palette_orange,
   
   //coasting orange 
-  69566,fx_palette_orange,
-  69566,fx_speed_1,
-  69566,fx_transition_fast,
+  69566,fx_transition_timed,
+  69566,fx_palette_rgb,
+  69566,fx_speed_0,
+  //69566,fx_transition_fast,
 
 //placeholder
   80500, fx_palette_dark,
